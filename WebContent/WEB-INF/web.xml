@@ -1,0 +1,13 @@
+<web-app xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee
+http://java.sun.com/xml/ns/j2ee/web-app_3_0.xsd"
+    version="3.0">
+  <description>MySQL DB Connection</description>
+  <resource-ref>
+      <description>DB Connection</description>
+      <res-ref-name>jdbc/SINC</res-ref-name>
+      <res-type>javax.sql.DataSource</res-type>
+      <res-auth>Container</res-auth>
+  </resource-ref>
+</web-app>
