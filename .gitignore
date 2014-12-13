@@ -9,3 +9,16 @@
 .settings/org.eclipse.wst.jsdt.ui.superType.container
 .settings/org.eclipse.wst.jsdt.ui.superType.name
 .settings/org.eclipse.wst.validation.prefs
+**/.idea/**
+iron.iml
+**/target/
+AllDeclinations.class
+AuditProcessor.class
+DuplicateProcessor.class
+DuplicateProcessor$OrderInfo.class
+GroupsToBatch.class
+MissingOrders.class
+ResetBatch.class
+Utils.class
+UtilsTest.class
+pom.properties

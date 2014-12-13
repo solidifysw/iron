@@ -661,7 +661,7 @@ public class Utils {
 	/**
 	 * Parses out the member information from the order data blob and places relevant data into a slimmed down order blob.
 	 * member: {employeeId:"123", dependents:[],...personal:{firstName:"John",dateOfBirth:"03/10/1962",..}}
-	 * @param order
+	 * @param order the object to populate
 	 * @param jp
 	 * @throws JsonParseException
 	 * @throws IOException
