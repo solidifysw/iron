@@ -186,7 +186,6 @@ public class Utils {
 	/**
 	 * Print's the data stored in the order data blob in the database to the log.  
 	 * @param orderId the id of the order to dump
-	 * @param includeSourceBlob will include the full data blob along with the slimmed-down version if true
 	 */
 	public static void dumpOrderBlob(String orderId) {
 		boolean includeSourceBlob = false;
@@ -504,7 +503,7 @@ public class Utils {
 			return obj2;
 		}
 	}
-	
+
 	/**
 	 * Stream parses the order blob from the orders table and builds a small JSONObject containing the minimum amount of information
 	 * @param groupId
@@ -516,17 +515,38 @@ public class Utils {
 	 * @throws Exception
 	 */
 	public static JSONObject buildObject(String groupId, String groupName, String orderId, String memberId, byte[] bdata) throws Exception {
-		
-		HashSet<String> skip = new HashSet<String>();
-		//skip.add("declineReasons"); 
-		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("questionAnswers"); skip.add("enrollment"); skip.add("imported"); skip.add("current");
 		JSONObject order = new JSONObject();
 		order.put("groupId", groupId); // ***
 		order.put("name",groupName);
 		order.put("orderId", orderId);
 		order.put("memberId",memberId);
+		return buildObject(order,bdata);
+	}
+
+	public static JSONObject buildObject(JSONObject order, byte[] bdata) {
 		JsonFactory factory = new JsonFactory();
-		JsonParser jp = factory.createParser(bdata);
+		JSONObject out = null;
+		try {
+			JsonParser jp = factory.createParser(bdata);
+			out = buildObject(order,jp);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return out;
+	}
+	/**
+	 * Stream parses the order blob from the orders table and builds a small JSONObject containing the minimum amount of information
+	 * @return
+	 * @throws Exception
+	 */
+	public static JSONObject buildObject(JSONObject order, JsonParser jp) throws Exception {
+		
+		HashSet<String> skip = new HashSet<String>();
+		//skip.add("declineReasons"); 
+		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("questionAnswers"); skip.add("enrollment"); skip.add("imported"); skip.add("current");
+
 		JsonToken current = null;
 		HashMap<String,String> declineReasons = null;
 		String field = null;
