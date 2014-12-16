@@ -1,13 +1,10 @@
 <%@page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@page import="com.solidify.admin.reports.Utils" %>
-<%@page import="com.solidify.admin.reports.AllDeclinations" %>
-<%@page import="com.solidify.admin.reports.MissingOrders" %>
-<%@page import="com.solidify.admin.reports.ResetBatch" %>
 <%@page import="org.json.JSONArray" %>
 <%@page import="org.json.JSONObject" %>
 <%@page import="java.util.HashMap" %>
 <%@page import="java.util.TreeMap" %>
 <%@page import="java.util.Iterator" %>
+<%@ page import="com.solidify.admin.reports.*" %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <%
 String message = null;
@@ -23,6 +20,9 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 } else if (reportToRun != null && reportToRun.equals("resetBatches")) {
 	String groupId = request.getParameter("groupId");
 	new Thread(new ResetBatch(groupId)).start();
+} else if (reportToRun != null && reportToRun.equals("dumpBlob")) {
+	String orderId = request.getParameter("orderId");
+	new Thread(new DumpBlob(orderId,true)).start();
 }
 %>
 <html>
@@ -94,6 +94,20 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 				</select>
 			</td>
 			<td><input type="submit" value="Run"></td>
+		</tr>
+	</table>
+</form>
+<hr>
+<h2>Dump Order for OrderId</h2>
+<form action="RunReport.jsp" method="POST">
+	<input type="hidden" name="reportToRun" value="dumpBlob">
+	<table>
+		<tr>
+			<td>OrderId:&nbsp;</td>
+			<td>
+				<input type="text" name="orderId" />
+			</td>
+			<td><input type="submit" value="Run" /></td>
 		</tr>
 	</table>
 </form>

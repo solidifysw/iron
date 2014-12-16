@@ -196,7 +196,7 @@ public class Utils {
 	 * Print's the order data blob in the database to the log
 	 * @param orderId
 	 */
-	public static void dumpOrderBlob(String orderId, boolean includeSourceBlob) {
+	public static JSONObject dumpOrderBlob(String orderId, boolean includeSourceBlob) {
 		Connection con = null;
 		PreparedStatement select = null;
 		ResultSet rs = null;
@@ -240,6 +240,7 @@ public class Utils {
 				rs.close();
 			} catch (Exception e) {}
 		}
+		return null;
 	}
 	
 	/**
@@ -587,13 +588,17 @@ public class Utils {
 			log.error(field);
 		}
 		if (declineReasons != null && !declineReasons.isEmpty()) {
-			JSONArray covs = (JSONArray)order.get("covs");
-			for (int i=0; i<covs.length(); i++) {
-				JSONObject cov = (JSONObject)covs.get(i);
-				String covUuid = (String)cov.get("splitId");
-				if (declineReasons.containsKey(covUuid)) {
-					cov.put("declineReason", declineReasons.get(covUuid));
+			try {
+				JSONArray covs = (JSONArray) order.get("covs");
+				for (int i = 0; i < covs.length(); i++) {
+					JSONObject cov = (JSONObject) covs.get(i);
+					String covUuid = (String) cov.get("splitId");
+					if (declineReasons.containsKey(covUuid)) {
+						cov.put("declineReason", declineReasons.get(covUuid));
+					}
 				}
+			} catch (Exception e) {
+				log.error(order.toString());
 			}
 		}
 		return order;
