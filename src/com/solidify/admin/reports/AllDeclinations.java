@@ -26,7 +26,9 @@ public class AllDeclinations implements Runnable {
 		log.info("all declinations thread started");
 		BufferedWriter bw = null;
 		try {
-			File out = new File("/tmp/declinations.csv");
+			String groupName = "";
+			groupName = Utils.getGroupName(groupId);
+			File out = new File("/tmp/"+groupName+"_declinations.csv");
 			bw = new BufferedWriter(new FileWriter(out));
 			bw.write("\"First\",\"Last\",\"DOB\",\"SSN\",\"Product\",\"Reason\"");
 			bw.newLine();

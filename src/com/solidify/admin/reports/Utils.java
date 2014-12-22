@@ -163,7 +163,7 @@ public class Utils {
 			if (rs.next()) {
 				Blob b = rs.getBlob("data");
 				byte[] bdata = b.getBytes(1, (int) b.length());
-				String tmp = new String(bdata);
+				String tmp = new String(bdata,"UTF-8");
 				log.info(tmp);
 			}
 			rs.close();
@@ -295,7 +295,19 @@ public class Utils {
 		}
 		return out;
 	}
-	
+
+	public static int numberOfOrdersForGroup(String groupId) {
+		int out = 0;
+		try {
+
+		} catch (Exception e) {
+
+		} finally {
+
+		}
+		return out;
+	}
+
 	/**
 	 * Gets the latest orders for the group.  Will get the database connection for you.
 	 * @param groupId the id of the group in the groups table.
@@ -375,6 +387,7 @@ public class Utils {
 			idSelect.close();
 			
 			// query each order and parse the data blob for pertinent info
+			int cnt = 0;
 			for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
 				String orderId = it.next();
 				stmt1 = con.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY,java.sql.ResultSet.CONCUR_READ_ONLY);
@@ -382,13 +395,16 @@ public class Utils {
 				orderRes = stmt1.executeQuery("SELECT data,memberId FROM sinc.orders WHERE id ='"+orderId+"'");
 				
 				while (orderRes.next()) {
+					cnt++;
 					Blob b = orderRes.getBlob("data");
 					byte[] bdata = b.getBytes(1, (int) b.length());
 					//String tmp1 = new String(bdata);
 					//log.info(tmp1);
 					try {
 						JSONObject slimOrder = buildObject(groupId, groupName, orderId, orderRes.getString("memberId"), bdata);
-						groupOrders.put(slimOrder);
+						if (slimOrder.get("testUser").equals("NO")) {
+							groupOrders.put(slimOrder);
+						}
 					} catch (Exception e) {
 						String tmp = new String(bdata);
 						log.error(tmp);
@@ -397,12 +413,20 @@ public class Utils {
 				orderRes.close();
 				stmt1.close();
 			}
+			log.info("Found "+cnt+" total orders before removing test users.");
 			
 			// groupOrders contains the slim versions of the orders for this group
 			// Find the latest order for each individual
+			log.info("groupOrders.length: "+groupOrders.length());
 			if (groupOrders.length() > 0) {
 				log.info(groupName+" has "+groupOrders.length()+" total completed orders.");
 				out = findLatestOrders(groupOrders);
+				log.info("latest orders: "+out.size());
+
+				//out = new ArrayList<JSONObject>();
+				//for (int i=0; i<groupOrders.length(); i++) {
+					//out.add((JSONObject) groupOrders.get(i));
+				//}
 			}
 		} catch (Exception e) {
 			log.error("error",e);
@@ -429,7 +453,118 @@ public class Utils {
 		log.info(groupName+" "+out.size()+" real orders.");
 		return out;
 	}
-	
+
+	public static ArrayList<JSONObject> getAllOrdersForGroup(String groupId) {
+		Connection con = null;
+		ArrayList out = null;
+		try {
+			con = getConnection();
+			out = getAllOrdersForGroup(groupId,con);
+		} catch (Exception e) {
+			log.error("error",e);
+		} finally {
+			try {
+				con.close();
+			} catch (Exception e) {}
+		}
+		return out;
+	}
+
+	public static ArrayList<JSONObject> getAllOrdersForGroup(String groupId, Connection con) {
+		ArrayList<JSONObject> out = new ArrayList<JSONObject>();
+		PreparedStatement select = null;
+		ResultSet rs = null;
+		PreparedStatement idSelect = null;
+		ResultSet oIds = null;
+		Statement stmt1 = null;
+		ResultSet orderRes = null;
+
+		HashSet<String> orderIds = new HashSet<String>();
+		JSONArray groupOrders = new JSONArray();
+		String groupName = null;
+
+		try {
+			String sql = "SELECT name FROM sinc.groups WHERE id = ?";
+			select = con.prepareStatement(sql);
+			select.setString(1,groupId);
+			rs = select.executeQuery();
+			if (rs.next()) {
+				groupName = rs.getString("name");
+			}
+			rs.close();
+			select.close();
+
+			// Get the list of orderId's for this group
+			sql = "SELECT id FROM sinc.orders WHERE completed = 1 AND deleted = 0 AND type != 'IMPORTED' AND groupId = ?";
+			idSelect = con.prepareStatement(sql);
+			idSelect.setString(1, groupId);
+			oIds = idSelect.executeQuery();
+			while (oIds.next()) {
+				orderIds.add(oIds.getString("id"));
+			}
+			oIds.close();
+			idSelect.close();
+
+			// query each order and parse the data blob for pertinent info
+			int cnt = 0;
+			for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
+				String orderId = it.next();
+				stmt1 = con.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
+				stmt1.setFetchSize(Integer.MIN_VALUE);
+				orderRes = stmt1.executeQuery("SELECT data,memberId FROM sinc.orders WHERE id ='" + orderId + "'");
+
+				while (orderRes.next()) {
+					cnt++;
+					Blob b = orderRes.getBlob("data");
+					byte[] bdata = b.getBytes(1, (int) b.length());
+
+					//String tmp1 = new String(bdata);
+					//log.info(tmp1);
+					try {
+						JSONObject slimOrder = buildObject(groupId, groupName, orderId, orderRes.getString("memberId"), bdata);
+						if (slimOrder.get("testUser").equals("NO")) {
+							groupOrders.put(slimOrder);
+						}
+					} catch (Exception e) {
+						String tmp = new String(bdata);
+						log.error(tmp);
+					}
+				}
+				orderRes.close();
+				stmt1.close();
+			}
+			log.info("Found "+cnt+" total orders before removing test users.");
+			if (groupOrders.length() > 0) {
+				for (int i=0; i<groupOrders.length(); i++) {
+					out.add((JSONObject)groupOrders.get(i));
+				}
+			}
+			return out;
+		} catch (Exception e) {
+			log.error("error",e);
+		} finally {
+			try {
+				select.close();
+			} catch (Exception e) {}
+			try {
+				rs.close();
+			} catch (Exception e) {}
+			try {
+				idSelect.close();
+			} catch (Exception e) {}
+			try {
+				stmt1.close();
+			} catch (Exception e) {}
+			try {
+				oIds.close();
+			} catch (Exception e) {}
+			try {
+				orderRes.close();
+			} catch (Exception e) {}
+		}
+		log.info(groupName+" "+out.size()+" total orders.");
+		return out;
+	}
 	/**
 	 * Takes all of the orders for a group and filters out only the latest one for each member.
 	 * @param groupOrders
@@ -444,19 +579,21 @@ public class Utils {
 				if (matched.contains(i)) {
 					continue;
 				}
-				JSONObject obj1 = (JSONObject)groupOrders.get(i);
+				JSONObject obj1 = (JSONObject) groupOrders.get(i);
 				latest = obj1;
-				if (i<groupOrders.length()-1) {
-					for (int j=i+1; j<groupOrders.length(); j++) {
+				if (i < groupOrders.length() - 1) {
+					for (int j = i + 1; j < groupOrders.length(); j++) {
 						if (!matched.contains(new Integer(j))) {
-							JSONObject obj2 = (JSONObject)groupOrders.get(j);
-							if (sameMember(obj1,obj2)) {
+							JSONObject obj2 = (JSONObject) groupOrders.get(j);
+							if (sameMember(obj1, obj2)) {
 								matched.add(new Integer(j));
-								latest = laterOf(latest,obj2);
+								latest = laterOf(latest, obj2);
 								//log.info(obj1);
 								//log.info(obj2);
 								//log.info(latest.get("orderId"));
 								//log.info("-----");
+							} else {
+
 							}
 						}
 					}
@@ -474,10 +611,26 @@ public class Utils {
 	 * @return
 	 */
 	public static boolean sameMember(JSONObject obj1, JSONObject obj2) {
-		String ssn1 = (String)obj1.get("ssn");
-		String ssn2 = (String)obj2.get("ssn");
-		if (ssn1 != null && ssn2 != null && !"".equals(ssn1) && !"".equals(ssn2)) {
-			return ssn1.equals(ssn2);
+		String ssn1 = obj1.getString("ssn");
+		if (ssn1 == null) {
+			ssn1 = "";
+		}
+		String dob1 = obj1.getString("dateOfBirth");
+		if (dob1 == null) {
+			dob1 = "";
+		}
+
+		String ssn2 = obj2.getString("ssn");
+		if (ssn2 == null) {
+			ssn2 = "";
+		}
+		String dob2 = obj2.getString("dateOfBirth");
+		if (dob2 == null) {
+			dob2 = "";
+		}
+
+		if (!"".equals(ssn1) && !"".equals(ssn2) && !"".equals(dob1) && !"".equals(dob2)) {
+			return ssn1.equals(ssn2) && dob1.equals(dob2);
 		} else {
 			return false;
 		}
@@ -528,7 +681,8 @@ public class Utils {
 		JsonFactory factory = new JsonFactory();
 		JSONObject out = null;
 		try {
-			JsonParser jp = factory.createParser(bdata);
+			String tmp = new String(bdata,"UTF-8");
+			JsonParser jp = factory.createParser(tmp);
 			out = buildObject(order,jp);
 		} catch (IOException e) {
 			e.printStackTrace();

@@ -23,6 +23,9 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 } else if (reportToRun != null && reportToRun.equals("dumpBlob")) {
 	String orderId = request.getParameter("orderId");
 	new Thread(new DumpBlob(orderId,true)).start();
+} else if (reportToRun != null && reportToRun.equals("dumpGroupOrders")) {
+	String groupId = request.getParameter("groupId");
+	new Thread(new DumpGroupOrders(groupId)).start();
 }
 %>
 <html>
@@ -108,6 +111,27 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 				<input type="text" name="orderId" />
 			</td>
 			<td><input type="submit" value="Run" /></td>
+		</tr>
+	</table>
+</form>
+<hr>
+<h2>Dump Latest Orders for Group</h2>
+<form action="RunReport.jsp" method="POST">
+	<input type="hidden" name="reportToRun" value="dumpGroupOrders">
+	<table>
+		<tr>
+			<td>
+				<select name="groupId">
+					<% if (groups != null) { %>
+					<% for (Iterator<String> it = groups.keySet().iterator(); it.hasNext();) { %>
+					<% String name = it.next(); %>
+					<% String id = groups.get(name); %>
+					<option value="<%=id %>"><%=name%></option>
+					<% } %>
+					<% } %>
+				</select>
+			</td>
+			<td><input type="submit" value="Run"></td>
 		</tr>
 	</table>
 </form>

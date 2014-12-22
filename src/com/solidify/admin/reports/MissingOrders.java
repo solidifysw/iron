@@ -32,7 +32,9 @@ public class MissingOrders implements Runnable {
 		log.info("started");
 		ResultSet rs = null;
 		try {
-			File results = new File("/tmp/missingReport.csv");
+			String groupName = "";
+			groupName = Utils.getGroupName(groupId);
+			File results = new File("/tmp/"+groupName+"_missingReport.csv");
 			File ml = new File("/tmp/missingReportLog.txt");
 			myLog = new BufferedWriter(new FileWriter(ml));
 			
@@ -41,9 +43,7 @@ public class MissingOrders implements Runnable {
 			bw.newLine();
 			
 			con = Utils.getConnection();
-			
-			String groupName = "";
-			groupName = Utils.getGroupName(groupId);
+
 			JSONArray groupOrders = new JSONArray();
 			log.info(groupId+" : "+groupName);
 			
@@ -79,7 +79,7 @@ public class MissingOrders implements Runnable {
 					int num = rs.getInt("cnt");
 					myLog.write("orderId: "+oId+" has "+num+" in batchOrders");
 					myLog.newLine();
-					log.info("orderId: "+oId+" has "+num+" in batchOrders");
+					//log.info("orderId: "+oId+" has "+num+" in batchOrders");
 					if (num > 0) {
 						inBatchOrders.add(memId);
 						if (notInBatchOrders.containsKey(memId)) {
@@ -91,7 +91,7 @@ public class MissingOrders implements Runnable {
 				} else {
 					myLog.write("orderId: "+oId+" has 0 in batchOrders");
 					myLog.newLine();
-					log.info("orderId: "+oId+" has 0 in batchOrders");
+					//log.info("orderId: "+oId+" has 0 in batchOrders");
 					notInBatchOrders.put(memId, obj);
 				}
 				rs.close();

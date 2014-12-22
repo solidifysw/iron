@@ -30,16 +30,25 @@ public class ResetBatch implements Runnable {
 			con = Utils.getConnection();
 			int cnt = 0;
 			PreparedStatement update = null;
+
+			// clear everthing that was marked to batch.
+			sql = "UPDATE sinc.orders SET isBatchable = 0 WHERE groupId = ?";
+			update = con.prepareStatement(sql);
+			update.setString(1,groupId);
+			update.executeUpdate();
+			update.close();
+
+			// Get the good orders to batch
 			ArrayList<JSONObject> orders = Utils.getLatestOrdersForGroup(groupId, con);
-			
-			log.info("orders is back");
+			log.info("number of orders: "+orders.size());
+
 			if (!orders.isEmpty()) {
 				sql = "UPDATE sinc.orders SET isBatchable = 1 WHERE id = ?";
 				update = con.prepareStatement(sql);
 				for (Iterator<JSONObject> it = orders.iterator(); it.hasNext();) {
 					JSONObject obj = it.next();
 					String id = obj.getString("orderId");
-					log.info(id);
+					//log.info(id);
 					update.setString(1, id);
 					try {
 						cnt += update.executeUpdate();
@@ -47,7 +56,7 @@ public class ResetBatch implements Runnable {
 						log.info(obj.toString());
 						throw e;
 					}
-					log.info(cnt);
+					//log.info(cnt);
 				}
 				update.close();
 				
