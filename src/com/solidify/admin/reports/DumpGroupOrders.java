@@ -18,9 +18,18 @@ public class DumpGroupOrders implements Runnable {
 
     private static final Logger log = LogManager.getLogger();
     private final String groupId;
+    private final boolean orderType;
+    public static final boolean ALL_ORDERS = false;
+    public static final boolean LATEST_ORDERS = true;
 
     public DumpGroupOrders(String groupId) {
         this.groupId = groupId;
+        this.orderType = true;
+    }
+
+    public DumpGroupOrders(String groupId, boolean orderType) {
+        this.groupId = groupId;
+        this.orderType = orderType;
     }
 
     @Override
@@ -32,33 +41,36 @@ public class DumpGroupOrders implements Runnable {
 
             File results = new File("/tmp/"+groupName+"_dumpOrders.csv");
             bw = new BufferedWriter(new FileWriter(results));
-            bw.write("\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\",\"Date\",\"OrderId\",\"All Declined\"");
+            bw.write("\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\",\"Date\",\"OrderId\",\"Product\",\"Benefit\",\"Total Yearly\"");
             bw.newLine();
 
             log.info("Dump Group Orders thread has started.");
             Collection<JSONObject> orders;
-            orders = Utils.getLatestOrdersForGroup(groupId);
-            //orders = Utils.getAllOrdersForGroup(groupId);
 
-            log.info(orders.size() + " orders found.");
+            if (orderType == ALL_ORDERS) {
+                orders = Utils.getAllOrdersForGroup(groupId);
+            } else {
+                orders = Utils.getLatestOrdersForGroup(groupId);
+            }
+
+            //log.info(orders.size() + " orders found.");
 
             for (JSONObject order : orders) {
-                JSONArray covs = (JSONArray) order.get("covs");
-                boolean allDeclined = true;
+                String ssn = order.getString("ssn");
+                String last4 = "";
+                int len = ssn.length();
+                if (len >= 4) {
+                    last4 = ssn.substring(len-4);
+                }
+                JSONArray covs = order.getJSONArray("covs");
                 if (covs != null && covs.length() > 0) {
                     for (int i=0; i<covs.length(); i++) {
                         JSONObject cov = (JSONObject) covs.get(i);
-                        if (!cov.get("benefit").equals("Decline")) {
-                            allDeclined = false;
-                            break;
-                        }
+                        bw.write("\"" + order.get("memberId") + "\",\"" + order.get("firstName") + " " + order.get("lastName") + "\",\"" + order.get("dateOfBirth") + "\",\"" + last4 + "\",\"" + order.get("date") + "\"," +
+                                "\"" + order.get("orderId") + "\",\"" + cov.getString("productId") + "\",\""+cov.getString("benefit")+"\",\""+cov.getString("totalYealy")+"\"");
+                        bw.newLine();
                     }
                 }
-                String declinedEverything = allDeclined ? "YES" : "";
-
-                bw.write("\"" + order.get("memberId") + "\",\"" + order.get("firstName") + " " + order.get("lastName") + "\",\"" + order.get("dateOfBirth") + "\",\"" + order.get("ssn") + "\",\"" + order.get("date") + "\",\"" + order.get("orderId") + "\",\"" + declinedEverything + "\"");
-                bw.newLine();
-                //log.info(order.toString());
             }
             log.info("Dump Group Orders thread has finished.");
         } catch (Exception e) {
