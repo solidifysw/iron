@@ -26,6 +26,8 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 } else if (reportToRun != null && reportToRun.equals("dumpGroupOrders")) {
 	String groupId = request.getParameter("groupId");
 	new Thread(new DumpGroupOrders(groupId)).start();
+} else if (reportToRun != null && reportToRun.equals("medicalEnrolled")) {
+	new Thread(new MedicalEnrolled()).start();
 }
 %>
 <html>
@@ -39,7 +41,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 	<br><span><font color="green"><%=message %></font></span><br>
 <% } %>
 <h2>Declined Coverages for Group</h2>
-<form action="RunReport.jsp" method="POST">
+<form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="declinations">
 	<table>
 		<tr>
@@ -60,7 +62,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 </form>
 <hr>
 <h2>Rebatch Missing Coverages</h2>
-<form action="RunReport.jsp" method="POST">
+<form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="missingCoverage">
 	<table>
 		<tr>
@@ -81,7 +83,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 </form>
 <hr>
 <h2>Reset Batches for a Group</h2>
-<form action="RunReport.jsp" method="POST">
+<form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="resetBatches">
 	<table>
 		<tr>
@@ -102,7 +104,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 </form>
 <hr>
 <h2>Dump Order for OrderId</h2>
-<form action="RunReport.jsp" method="POST">
+<form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="dumpBlob">
 	<table>
 		<tr>
@@ -116,7 +118,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 </form>
 <hr>
 <h2>Dump Latest Orders for Group</h2>
-<form action="RunReport.jsp" method="POST">
+<form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="dumpGroupOrders">
 	<table>
 		<tr>
@@ -132,6 +134,16 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 				</select>
 			</td>
 			<td><input type="submit" value="Run"></td>
+		</tr>
+	</table>
+</form>
+<hr>
+<h2>Run Medical Enrolled Report</h2>
+<form action="index.jsp" method="POST">
+	<input type="hidden" name="reportToRun" value="medicalEnrolled">
+	<table>
+		<tr>
+			<td><input type="submit" value="Run" /></td>
 		</tr>
 	</table>
 </form>
