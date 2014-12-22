@@ -27,7 +27,7 @@ public class AncillaryEnrolled implements Runnable {
         JSONObject data = null;
         HashSet<String> skip = new HashSet<String>();
         try {
-            skip.add("MEDICAL"); skip.add("FSA"); skip.add("HRA"); skip.add("HSA");
+            skip.add("MEDICAL"); skip.add("FSA"); skip.add("HRA"); skip.add("HSA"); skip.add("DEFAULTGENERIC"); skip.add("DEFAULTINFORMATIONAL");
             con = Utils.getConnection();
             File out = new File("/tmp/volProdsEnrolled.csv");
             bw = new BufferedWriter(new FileWriter(out));
