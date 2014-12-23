@@ -41,7 +41,7 @@ public class DumpGroupOrders implements Runnable {
 
             File results = new File("/tmp/"+groupName+"_dumpOrders.csv");
             bw = new BufferedWriter(new FileWriter(results));
-            bw.write("\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\",\"Date\",\"OrderId\",\"Product\",\"Benefit\",\"Total Yearly\"");
+            bw.write("\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\",\"Date\",\"OrderId\",\"Product\",\"Plan Name\",\"Benefit\",\"Total Yearly\"");
             bw.newLine();
 
             log.info("Dump Group Orders thread has started.");
@@ -67,7 +67,7 @@ public class DumpGroupOrders implements Runnable {
                     for (int i=0; i<covs.length(); i++) {
                         JSONObject cov = (JSONObject) covs.get(i);
                         bw.write("\"" + order.get("memberId") + "\",\"" + order.get("firstName") + " " + order.get("lastName") + "\",\"" + order.get("dateOfBirth") + "\",\"" + last4 + "\",\"" + order.get("date") + "\"," +
-                                "\"" + order.get("orderId") + "\",\"" + cov.getString("productId") + "\",\""+cov.getString("benefit")+"\",\""+cov.getString("totalYealy")+"\"");
+                                "\"" + order.get("orderId") + "\",\"" + cov.getString("productId") + "\",\""+cov.getString("planName")+"\",\""+cov.getString("benefit")+"\",\""+cov.getString("totalYearly")+"\"");
                         bw.newLine();
                     }
                 }
