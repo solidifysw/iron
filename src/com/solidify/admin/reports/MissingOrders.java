@@ -6,10 +6,8 @@ import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.sql.SQLException;
+import java.util.*;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,7 +23,7 @@ public class MissingOrders implements Runnable {
 		this.groupId = groupId;
 	}
 	
-	public void run() {
+	public void run2() {
 		Connection con = null;
 		BufferedWriter bw = null;
 		BufferedWriter myLog = null;
@@ -47,12 +45,12 @@ public class MissingOrders implements Runnable {
 			JSONArray groupOrders = new JSONArray();
 			log.info(groupId+" : "+groupName);
 			
-			ArrayList<JSONObject> orders = Utils.getLatestOrdersForGroup(groupId, con, false);  // false puts isBatchable = 0 on the query so only the unbatched latest orders are returned.
+			ArrayList<JSONObject> orders = Utils.getLatestOrdersForGroup(groupId, con, true);  // false puts isBatchable = 0 on the query so only the unbatched latest orders are returned.
 			
-			myLog.write(groupName+" has "+orders.size()+" orders with isBatchable = 0.");
+			myLog.write(groupName+" has "+orders.size()+" orders.");
 			myLog.newLine();
 			
-			log.info(groupName+" has "+orders.size()+" orders with isBatchable = 0.");
+			log.info(groupName+" has "+orders.size()+" orders.");
 			
 			HashSet<String> inBatchOrders = new HashSet<String>();
 			HashMap<String, JSONObject> notInBatchOrders = new HashMap<String, JSONObject>();
@@ -66,7 +64,11 @@ public class MissingOrders implements Runnable {
 			String batchSql = "SELECT COUNT(*) AS cnt FROM batchOrders WHERE orderId = ? and deleted = 0";
 			PreparedStatement batchOrdersCnt = con.prepareStatement(batchSql);
 			for (int i=0; i<len; i++) {
+
 				JSONObject obj = (JSONObject)groupOrders.get(i);
+				if (i== 0) {
+					log.info(obj.toString());
+				}
 				String oId = (String)obj.get("orderId");
 				String memId = (String)obj.get("memberId");
 				if (inBatchOrders.contains(memId)) {
@@ -135,6 +137,63 @@ public class MissingOrders implements Runnable {
 			} catch (Exception e) {}
 		}
 
+	}
+
+	public void run() {
+		log.info("MissingOrders thread started.");
+		Connection con = null;
+		BufferedWriter bw = null;
+
+		PreparedStatement select = null;
+		PreparedStatement update = null;
+		ResultSet rs = null;
+		try {
+			String groupName = "";
+			groupName = Utils.getGroupName(groupId);
+			log.info(groupName);
+
+			con = Utils.getConnection();
+			Collection<JSONObject> orders = Utils.getLatestOrdersForGroup(groupId,con);
+			log.info(orders.size()+" valid orders");
+
+			String batchSql = "SELECT COUNT(*) AS cnt FROM batchOrders WHERE orderId = ? and deleted = 0";
+			select = con.prepareStatement(batchSql);
+			String upSql = "UPDATE sinc.orders SET isBatchable = 1 WHERE id = ?";
+			update = con.prepareStatement(upSql);
+
+			int cnt = 0;
+			int missingCnt = 0;
+
+			for (JSONObject order : orders) {
+				if (!order.getBoolean("isBatchable")) {
+					// have a latest order that has isBatchable false, check to see if it has been added to a batch
+					String orderId = order.getString("orderId");
+					select.setString(1,orderId);
+					rs = select.executeQuery();
+					if (rs.next()) {
+						cnt = rs.getInt("cnt");
+						if (cnt == 0) {
+							missingCnt++;
+							// set isBatchable true on this order
+							update.setString(1,orderId);
+							update.executeUpdate();
+						}
+					}
+					rs.close();
+				}
+			}
+			select.close();
+			update.close();
+			log.info(missingCnt+" orders missing from batches");
+			log.info("MissingOrders Thread finished.");
+		} catch (Exception e) {
+			log.error("error",e);
+		} finally {
+			try {
+				con.close();
+			} catch (SQLException e) {
+			}
+		}
 	}
 
 }

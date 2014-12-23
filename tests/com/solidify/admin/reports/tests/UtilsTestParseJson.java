@@ -17,11 +17,11 @@ public class UtilsTestParseJson extends TestCase {
     public void setUp() {
         try {
             JsonFactory f = new JsonFactory();
-            JsonParser jp = f.createParser(new File("/Users/jennifermac/Workspaces/eclipse/iron/src/com/solidify/admin/reports/tests/sample.json"));
+            //JsonParser jp = f.createParser(new File("/Users/jennifermac/Workspaces/eclipse/iron/src/com/solidify/admin/reports/tests/sample.json"));
+            JsonParser jp = f.createParser(new File("/Users/jrobins/Documents/intellij/iron/tests/com/solidify/admin/reports/tests/sample.json"));
             obj = new JSONObject();
             obj.put("groupName","");
             obj = Utils.buildObject(obj,jp);
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -29,14 +29,13 @@ public class UtilsTestParseJson extends TestCase {
 
     @Test
     public void testParse() {
-        // open json sample
-        // parse
-        // find stuff
-       assertNotNull(obj.get("firstName"));
+        assertNotNull(obj.getString("firstName"));
+        assertEquals("abc",obj.getString("memberId"));
+        assertEquals("abc",obj.getString("occupation"));
     }
 
     @Test public void testFirstName() {
-        assertEquals("Zachary",obj.get("firstName"));
+        assertEquals("Zachary",obj.getString("firstName"));
     }
 
 

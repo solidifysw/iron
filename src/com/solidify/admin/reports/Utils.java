@@ -48,7 +48,38 @@ public class Utils {
 	public static TreeMap<String,String> getGroupList() {
 		return getGroupList(ALL);
 	}
-	
+
+	public static int getMemberCount(String groupId) throws SQLException {
+		Connection con = getConnection();
+		int cnt = 0;
+		try {
+			cnt = getMemberCount(groupId,con);
+		} finally {
+			if (con != null) con.close();
+		}
+		return cnt;
+	}
+
+	public static int getMemberCount(String groupId, Connection con) throws SQLException {
+		PreparedStatement getCnt = null;
+		ResultSet cntRs = null;
+		int cnt = 0;
+		try {
+			String sql = "SELECT COUNT(*) AS cnt FROM sinc.members WHERE groupId = ? and deleted = 0";
+			getCnt = con.prepareStatement(sql);
+			getCnt.setString(1, groupId);
+			cntRs = getCnt.executeQuery();
+			if (cntRs.next()) {
+				cnt = cntRs.getInt("cnt");
+			}
+
+		} finally {
+			if (getCnt != null) getCnt.close();
+			if (cntRs != null) cntRs.close();
+		}
+		return cnt;
+	}
+
 	/**
 	 * Returns the list of groupNames and groupIds in a TreeMap to preserve the order.
 	 * @param activeFilter indicates which groups to include, active, inactive or all
@@ -385,7 +416,7 @@ public class Utils {
 			}
 			oIds.close();
 			idSelect.close();
-			
+
 			// query each order and parse the data blob for pertinent info
 			int cnt = 0;
 			for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
@@ -413,15 +444,15 @@ public class Utils {
 				orderRes.close();
 				stmt1.close();
 			}
-			log.info("Found "+cnt+" total orders before removing test users.");
+			//log.info("Found "+cnt+" total orders before removing test users.");
 			
 			// groupOrders contains the slim versions of the orders for this group
 			// Find the latest order for each individual
-			log.info("groupOrders.length: "+groupOrders.length());
+			//log.info("groupOrders.length: "+groupOrders.length());
 			if (groupOrders.length() > 0) {
-				log.info(groupName+" has "+groupOrders.length()+" total completed orders.");
+				//log.info(groupName+" has "+groupOrders.length()+" total completed orders.");
 				out = findLatestOrders(groupOrders);
-				log.info("latest orders: "+out.size());
+				//log.info("latest orders: "+out.size());
 
 				//out = new ArrayList<JSONObject>();
 				//for (int i=0; i<groupOrders.length(); i++) {
@@ -450,7 +481,7 @@ public class Utils {
 				orderRes.close();
 			} catch (Exception e) {}
 		}
-		log.info(groupName+" "+out.size()+" real orders.");
+		//log.info(groupName+" "+out.size()+" real orders.");
 		return out;
 	}
 
@@ -735,6 +766,9 @@ public class Utils {
 						jp.skipChildren();
 					} else if ("declineReasons".equals(field)) {
 						declineReasons = getDeclineReasons(order,jp);
+					} else if ("isBatchable".equals(field)) {
+						jp.nextToken();
+						order.put("isBatchable",jp.getValueAsBoolean());
 					}
 				}
 			}
@@ -883,7 +917,10 @@ public class Utils {
 					} else if ("testUser".equals(field)) {
 						current = jp.nextToken();
 						order.put("testUser", jp.getValueAsString());
-					} 
+					}  //else if ("occupation".equals(field)) {
+						//current = jp.nextToken();
+						//order.put("occupation", jp.getValueAsString());
+					//}
 				}
 			}
 		}

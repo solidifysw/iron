@@ -18,9 +18,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 
-/**
- * Created by jennifermac on 12/22/14.
- */
 public class MedicalEnrolled implements Runnable {
     private static final Logger log = LogManager.getLogger();
     BufferedWriter bw = null;
@@ -58,6 +55,8 @@ public class MedicalEnrolled implements Runnable {
                 if (!currentId.equals(groupId)) {
                     currentId = groupId;
                     orders = Utils.getLatestOrdersForGroup(groupId,con);
+                    cnt = Utils.getMemberCount(groupId,con);
+                    /*
                     sql = "SELECT COUNT(*) AS cnt FROM sinc.members WHERE groupId = ? and deleted = 0";
                     PreparedStatement getCnt = con.prepareStatement(sql);
                     getCnt.setString(1,groupId);
@@ -67,6 +66,7 @@ public class MedicalEnrolled implements Runnable {
                     }
                     getCnt.close();
                     cntRs.close();
+                    */
                 }
 
                 JSONObject data = new JSONObject(new JSONTokener(rs.getString("data")));
@@ -97,7 +97,7 @@ public class MedicalEnrolled implements Runnable {
                         }
                     }
                 }
-                log.info(groupName+" "+carrier+" "+underwriter+" "+money.format(sum));
+                log.info(groupName+" "+carrier+" "+underwriter+" "+displayName+" "+money.format(sum)+" "+cnt);
                 bw.write("\"" + groupName + "\",\"" + carrier + "\",\"" + underwriter + "\",\"" + displayName + "\",\"" + money.format(sum) + "\",\""+cnt+"\"");
                 bw.newLine();
 
