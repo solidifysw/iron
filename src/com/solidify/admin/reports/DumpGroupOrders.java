@@ -24,7 +24,7 @@ public class DumpGroupOrders implements Runnable {
 
     public DumpGroupOrders(String groupId) {
         this.groupId = groupId;
-        this.orderType = true;
+        this.orderType = ALL_ORDERS;
     }
 
     public DumpGroupOrders(String groupId, boolean orderType) {

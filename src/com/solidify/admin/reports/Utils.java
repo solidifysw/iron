@@ -99,7 +99,7 @@ public class Utils {
 			} else if (activeFilter.equals(INACTIVE)) {
 				sql += "AND active = 0";
 			}
-			sql += " ORDER BY name ASC";
+			sql += " ORDER BY name, active ASC";
 			select = con.prepareStatement(sql);
 			rs = select.executeQuery();
 			while (rs.next()) {
@@ -234,12 +234,18 @@ public class Utils {
 		try {
 			con = getConnection();
 			
-			String sql = "SELECT data, memberId FROM sinc.orders WHERE id = ?";
+			String sql = "SELECT data, memberId, isBatchable FROM sinc.orders WHERE id = ?";
 			select = con.prepareStatement(sql);
 			select .setString(1, orderId);
 			rs = select.executeQuery();
 			if (rs.next()) {
 				String memberId = rs.getString("memberId");
+				boolean isBatchable = rs.getBoolean("isBatchable");
+				if (isBatchable) {
+					log.info("isBatchable column is true");
+				} else {
+					log.info("isBatchable column is false");
+				}
 				Blob b = rs.getBlob("data");
 				byte[] bdata = b.getBytes(1, (int) b.length());
 				if (includeSourceBlob) {
@@ -882,8 +888,9 @@ public class Utils {
 	private static void buildMember(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
 		String field = null;
 		JsonToken current = null;
-		HashSet<String> fields = new HashSet<String>();
-		fields.add("firstName"); fields.add("lastName"); fields.add("dateOfBirth"); fields.add("ssn");
+		HashSet<String> personal = new HashSet<String>();
+		personal.add("firstName"); personal.add("lastName"); personal.add("dateOfBirth"); personal.add("ssn"); personal.add("gender");
+		personal.add("address1"); personal.add("address2"); personal.add("city"); personal.add("state"); personal.add("zip"); personal.add("phone");
 		HashSet<String> skips = new HashSet<String>();
 		skips.add("dependents"); skips.add("emergencyContacts"); skips.add("beneficiaries");
 		
@@ -898,7 +905,7 @@ public class Utils {
 						while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
 							if (current == JsonToken.FIELD_NAME) {
 								field = jp.getCurrentName();
-								if (fields.contains(field)) {
+								if (personal.contains(field)) {
 									current = jp.nextToken();
 									order.put(field, jp.getValueAsString());
 								} else if (skips.contains(field)) {
@@ -917,10 +924,10 @@ public class Utils {
 					} else if ("testUser".equals(field)) {
 						current = jp.nextToken();
 						order.put("testUser", jp.getValueAsString());
-					}  //else if ("occupation".equals(field)) {
-						//current = jp.nextToken();
-						//order.put("occupation", jp.getValueAsString());
-					//}
+					}  else if ("occupation".equals(field)) {
+						current = jp.nextToken();
+						order.put("occupation", jp.getValueAsString());
+					}
 				}
 			}
 		}
