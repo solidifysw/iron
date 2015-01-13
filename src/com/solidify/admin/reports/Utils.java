@@ -231,6 +231,7 @@ public class Utils {
 		Connection con = null;
 		PreparedStatement select = null;
 		ResultSet rs = null;
+		JSONObject slimOrder = null;
 		try {
 			con = getConnection();
 			
@@ -253,7 +254,7 @@ public class Utils {
 					log.info(tmp);
 				}
 				try {
-					JSONObject slimOrder = buildObject("groupId", "groupName", orderId, memberId, bdata);
+					slimOrder = buildObject("groupId", "groupName", orderId, memberId, bdata);
 					if (slimOrder != null) {
 						log.info(slimOrder.toString());
 					}
@@ -277,7 +278,7 @@ public class Utils {
 				rs.close();
 			} catch (Exception e) {}
 		}
-		return null;
+		return slimOrder;
 	}
 	
 	/**

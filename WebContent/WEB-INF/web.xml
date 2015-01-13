@@ -1,7 +1,7 @@
 <web-app xmlns="http://java.sun.com/xml/ns/j2ee"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee
-http://java.sun.com/xml/ns/j2ee/web-app_3_0.xsd"
+    http://java.sun.com/xml/ns/j2ee/web-app_3_0.xsd"
     version="3.0">
   <description>MySQL DB Connection</description>
   <resource-ref>
@@ -10,4 +10,25 @@ http://java.sun.com/xml/ns/j2ee/web-app_3_0.xsd"
       <res-type>javax.sql.DataSource</res-type>
       <res-auth>Container</res-auth>
   </resource-ref>
+
+    <!-- works with the in memory tomcat-users.xml -->
+    <!--<security-constraint>
+        <web-resource-collection>
+            <web-resource-name>MySecureResource</web-resource-name>
+            <url-pattern>/*</url-pattern>
+            <http-method>GET</http-method>
+            <http-method>POST</http-method>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>role1</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <security-role>
+        <role-name>role1</role-name>
+    </security-role>
+    <login-config>
+        <auth-method>DIGEST</auth-method>
+        <realm-name>Digest</realm-name>
+    </login-config>
+-->
 </web-app>
