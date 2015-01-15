@@ -31,4 +31,13 @@
         <realm-name>Digest</realm-name>
     </login-config>
 -->
+
+    <servlet>
+        <servlet-name>Person</servlet-name>
+        <servlet-class>com.solidify.api.Person</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>Person</servlet-name>
+        <url-pattern>/api/person/*</url-pattern>
+    </servlet-mapping>
 </web-app>
