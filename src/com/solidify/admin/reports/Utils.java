@@ -894,7 +894,8 @@ public class Utils {
 		personal.add("address1"); personal.add("address2"); personal.add("city"); personal.add("state"); personal.add("zip"); personal.add("phone");
 		HashSet<String> skips = new HashSet<String>();
 		skips.add("dependents"); skips.add("emergencyContacts"); skips.add("beneficiaries");
-		
+		JSONArray deps = new JSONArray();
+
 		if (jp.nextToken() == JsonToken.START_OBJECT) {
 			while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
 				if(current == JsonToken.FIELD_NAME) {
@@ -909,6 +910,18 @@ public class Utils {
 								if (personal.contains(field)) {
 									current = jp.nextToken();
 									order.put(field, jp.getValueAsString());
+								} else if ("dependents".equals(field)) {
+									jp.nextToken(); // [ - dependents array
+									while((current = jp.nextToken()) != JsonToken.END_ARRAY) { // { dependent object
+										JSONObject tmp =  new JSONObject();
+										while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
+											field = jp.getCurrentName();
+											jp.nextToken();
+											tmp.put(field,jp.getValueAsString());
+										}
+										deps.put(tmp);
+									}
+									order.put("dependents",deps);
 								} else if (skips.contains(field)) {
 									current = jp.nextToken();
 									if (current == JsonToken.START_ARRAY || current == JsonToken.START_OBJECT) {
