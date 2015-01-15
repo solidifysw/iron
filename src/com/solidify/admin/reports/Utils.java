@@ -893,7 +893,7 @@ public class Utils {
 		personal.add("firstName"); personal.add("lastName"); personal.add("dateOfBirth"); personal.add("ssn"); personal.add("gender");
 		personal.add("address1"); personal.add("address2"); personal.add("city"); personal.add("state"); personal.add("zip"); personal.add("phone");
 		HashSet<String> skips = new HashSet<String>();
-		skips.add("dependents"); skips.add("emergencyContacts"); skips.add("beneficiaries");
+		skips.add("emergencyContacts"); skips.add("beneficiaries");
 		JSONArray deps = new JSONArray();
 
 		if (jp.nextToken() == JsonToken.START_OBJECT) {
