@@ -87,6 +87,27 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 	</table>
 </form>
 <hr>
+<h2>Look for Dupes</h2>
+<form action="index.jsp" method="POST">
+	<input type="hidden" name="reportToRun" value="lookForDupes">
+	<table>
+		<tr>
+			<td>
+				<select name="groupId">
+					<% if (groups != null) { %>
+					<% for (Iterator<String> it = groups.keySet().iterator(); it.hasNext();) { %>
+					<% String name = it.next(); %>
+					<% String id = groups.get(name); %>
+					<option value="<%=id %>"><%=name%></option>
+					<% } %>
+					<% } %>
+				</select>
+			</td>
+			<td><input type="submit" value="Run"></td>
+		</tr>
+	</table>
+</form>
+<hr>
 <h2>Reset Batches for a Group</h2>
 <form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="resetBatches">
