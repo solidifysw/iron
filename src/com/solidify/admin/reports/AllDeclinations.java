@@ -28,7 +28,7 @@ public class AllDeclinations implements Runnable {
 		try {
 			String groupName = "";
 			groupName = Utils.getGroupName(groupId);
-			File out = new File("/tmp/"+groupName+"_declinations.csv");
+			File out = new File("/tmp/Baxley_declinations.csv");
 			bw = new BufferedWriter(new FileWriter(out));
 			bw.write("\"First\",\"Last\",\"DOB\",\"SSN\",\"Product\",\"Reason\"");
 			bw.newLine();

@@ -30,6 +30,9 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 	new Thread(new MedicalEnrolled()).start();
 } else if (reportToRun != null && reportToRun.equals("ancillaryEnrolled")) {
 	new Thread(new AncillaryEnrolled()).start();
+} else if (reportToRun != null && reportToRun.equals("lookForDupes")) {
+	String groupId = request.getParameter("groupId");
+	new Thread(new LookForDupes(groupId)).start();
 }
 %>
 <html>

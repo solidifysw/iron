@@ -21,10 +21,11 @@ public class DumpGroupOrders implements Runnable {
     private final boolean orderType;
     public static final boolean ALL_ORDERS = false;
     public static final boolean LATEST_ORDERS = true;
+    private static final String delim = "|";
 
     public DumpGroupOrders(String groupId) {
         this.groupId = groupId;
-       // this.orderType = LATEST_ORDERS;
+        //this.orderType = LATEST_ORDERS;
         this.orderType = ALL_ORDERS;
     }
 
@@ -42,7 +43,8 @@ public class DumpGroupOrders implements Runnable {
 
             File results = new File("/tmp/"+groupName+"_dumpOrders.csv");
             bw = new BufferedWriter(new FileWriter(results));
-            bw.write("\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\",\"Date\",\"OrderId\",\"Product\",\"Plan Name\",\"Benefit\",\"Total Yearly\"");
+            //bw.write("\"memberId\""+delim+"\"EE Name\"\"+delim+\"\"EE dob\"\"+delim+\"\"EE SSN\"\"+delim+\"\"Date\"\"+delim+\"\"OrderId\"\"+delim+\"\"Product\"\"+delim+\"\"Plan Name\"\"+delim+\"\"Benefit\"\"+delim+\"\"Total Yearly\"");
+            bw.write("memberId"+delim+"EE Name"+delim+"EE dob"+delim+"EE SSN"+delim+"Date"+delim+"OrderId"+delim+"Product"+delim+"Plan Name"+delim+"Benefit"+delim+"Total Yearly");
             bw.newLine();
 
             log.info("Dump Group Orders thread has started.");
@@ -63,13 +65,18 @@ public class DumpGroupOrders implements Runnable {
                 if (len >= 4) {
                     last4 = ssn.substring(len-4);
                 }
-                JSONArray covs = order.getJSONArray("covs");
-                if (covs != null && covs.length() > 0) {
-                    for (int i=0; i<covs.length(); i++) {
-                        JSONObject cov = (JSONObject) covs.get(i);
-                        bw.write("\"" + order.get("memberId") + "\",\"" + order.get("firstName") + " " + order.get("lastName") + "\",\"" + order.get("dateOfBirth") + "\",\"" + last4 + "\",\"" + order.get("date") + "\"," +
-                                "\"" + order.get("orderId") + "\",\"" + cov.getString("productId") + "\",\""+cov.getString("planName")+"\",\""+cov.getString("benefit")+"\",\""+cov.getString("totalYearly")+"\"");
-                        bw.newLine();
+                if (order.has("covs")) {
+                    JSONArray covs = order.getJSONArray("covs");
+                    if (covs != null && covs.length() > 0) {
+                        for (int i = 0; i < covs.length(); i++) {
+                            JSONObject cov = (JSONObject) covs.get(i);
+                            //bw.write("\"" + order.get("memberId") + "\"\"+delim+\"\"" + order.get("firstName") + " " + order.get("lastName") + "\"\"+delim+\"\"" + order.get("dateOfBirth") + "\"\"+delim+\"\"" + last4 + "\"\"+delim+\"\"" + order.get("date") + "\"\"+delim+\"" +
+                                   // "\"" + order.get("orderId") + "\"\"+delim+\"\"" + cov.getString("productId") + "\"\"+delim+\"\"" + cov.getString("planName") + "\"\"+delim+\"\"" + cov.getString("benefit") + "\"\"+delim+\"\"" + cov.getString("totalYearly") + "\"");
+                            bw.write(order.get("memberId")+delim+ order.get("firstName") + " " + order.get("lastName")+delim+order.get("dateOfBirth")+delim+last4+delim+order.get("date")+delim+
+                                    order.get("orderId")+delim+cov.getString("productId")+delim+cov.getString("planName")+delim+cov.getString("benefit")+delim+cov.getString("totalYearly"));
+
+                            bw.newLine();
+                        }
                     }
                 }
             }

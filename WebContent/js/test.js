@@ -3,6 +3,9 @@ $(function(){
     var myName = new Person({id: "12345"});
     myName.fetch({reset:true});
     myName.on("change", function(msg){
-        console.log(myName.attributes);
-    })
+        console.log(myName.get('firstName')+' '+myName.get('lastName'));
+    });
+    myName.save('firstName','Bob');
+
+    console.log(myName.get('firstName'));
 });

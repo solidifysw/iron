@@ -5,8 +5,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collection;
 import java.util.Enumeration;
 
 /**
@@ -20,14 +23,6 @@ public class Person extends HttpServlet {
         JSONObject person = new JSONObject();
         System.out.println(req.getRequestURI());
         try {
-
-            Enumeration e = req.getParameterNames();
-            while (e.hasMoreElements()) {
-                String param = (String) e.nextElement();
-                System.out.println(param + " : " + req.getParameter(param));
-            }
-
-
             person.put("firstName", "John");
             person.put("lastName", "Doe");
         } catch (Exception e) {
@@ -35,6 +30,21 @@ public class Person extends HttpServlet {
         }
 
         out.println(person.toString());
+    }
+
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        System.out.println("in Person.doPut");
+        System.out.println(request.getRequestURI());
+        StringBuilder buffer = new StringBuilder();
+        BufferedReader reader = request.getReader();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            buffer.append(line);
+        }
+        String data = buffer.toString();
+        JSONObject jo = new JSONObject(data);
+        System.out.println(jo.getString("firstName"));
+
     }
 
 }

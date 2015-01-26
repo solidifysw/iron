@@ -738,7 +738,8 @@ public class Utils {
 		
 		HashSet<String> skip = new HashSet<String>();
 		//skip.add("declineReasons"); 
-		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("questionAnswers"); skip.add("enrollment"); skip.add("imported"); skip.add("current");
+		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("questionAnswers"); skip.add("enrollment"); skip.add("imported"); skip.add("current"); skip.add("usedDefinedContributions");
+		skip.add("lifeChangeTypes");
 
 		JsonToken current = null;
 		HashMap<String,String> declineReasons = null;
@@ -780,6 +781,7 @@ public class Utils {
 				}
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			log.error(field);
 		}
 		if (declineReasons != null && !declineReasons.isEmpty()) {
@@ -839,10 +841,11 @@ public class Utils {
 		JSONArray covs = new JSONArray();
 		HashSet<String> skips = new HashSet<String>();
 		skips.add("member"); skips.add("dependents"); skips.add("emergencyContacts"); skips.add("beneficiaries"); skips.add("signature"); skips.add("listBillAdjustments"); skips.add("dependents"); 
-		skips.add("coveredDependents"); skips.add("beneficiaries"); skips.add("premiums"); skips.add("carrierElectionData");
+		skips.add("coveredDependents"); skips.add("premiums"); skips.add("carrierElectionData");
 		HashSet<String> saves = new HashSet<String>();
 		saves.add("productId"); saves.add("planName"); saves.add("startDate"); saves.add("benefit"); saves.add("endDate"); saves.add("type"); saves.add("subType"); saves.add("deduction"); saves.add("totalYearly"); saves.add("electionTier"); saves.add("splitId");
-		
+		JSONArray bens = new JSONArray();
+
 		while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
 			if (current == JsonToken.FIELD_NAME) {
 				field = jp.getCurrentName();
@@ -863,6 +866,28 @@ public class Utils {
 							if (saves.contains(field)) {
 								current = jp.nextToken();
 								cov.put(field, jp.getValueAsString());
+							} else if ("beneficiaries".equals(field)) {
+								while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
+									JSONObject ben = new JSONObject();
+									current = jp.nextToken();
+									if (current == JsonToken.END_ARRAY) { // just break if empty array
+										break;
+									}
+									while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
+										if (current != JsonToken.START_OBJECT) {
+											field = jp.getCurrentName();
+											jp.nextToken();
+											if (field.equals("percent")) {
+												ben.put(field, jp.getValueAsInt());
+											} else {
+												ben.put(field, jp.getValueAsString());
+											}
+										}
+									}
+									bens.put(ben);
+
+								}
+								cov.put("beneficiaries",bens);
 							} else if (skips.contains(field)) {
 								current = jp.nextToken();
 								if (current == JsonToken.START_ARRAY || current == JsonToken.START_OBJECT) {
