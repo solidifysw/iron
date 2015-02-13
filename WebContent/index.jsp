@@ -32,7 +32,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 	new Thread(new AncillaryEnrolled()).start();
 } else if (reportToRun != null && reportToRun.equals("lookForDupes")) {
 	String groupId = request.getParameter("groupId");
-	new Thread(new LookForDupes(groupId)).start();
+	new Thread(new FixDupes(groupId)).start();
 }
 %>
 <html>
@@ -87,7 +87,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 	</table>
 </form>
 <hr>
-<h2>Look for Dupes</h2>
+<h2>Fix Dupe Coverage Lines</h2>
 <form action="index.jsp" method="POST">
 	<input type="hidden" name="reportToRun" value="lookForDupes">
 	<table>

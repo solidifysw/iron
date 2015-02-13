@@ -25,8 +25,8 @@ public class MissingOrders implements Runnable {
 	
 	public void run2() {
 		Connection con = null;
-		BufferedWriter bw = null;
-		BufferedWriter myLog = null;
+		//BufferedWriter bw = null;
+		//BufferedWriter myLog = null;
 		log.info("started");
 		ResultSet rs = null;
 		try {
@@ -34,11 +34,11 @@ public class MissingOrders implements Runnable {
 			groupName = Utils.getGroupName(groupId);
 			File results = new File("/tmp/"+groupName+"_missingReport.csv");
 			File ml = new File("/tmp/missingReportLog.txt");
-			myLog = new BufferedWriter(new FileWriter(ml));
+			//myLog = new BufferedWriter(new FileWriter(ml));
 			
-			bw = new BufferedWriter(new FileWriter(results));
-			bw.write("\"groupName\",\"groupId\",\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\"");
-			bw.newLine();
+			//bw = new BufferedWriter(new FileWriter(results));
+			//bw.write("\"groupName\",\"groupId\",\"memberId\",\"EE Name\",\"EE dob\",\"EE SSN\"");
+			//bw.newLine();
 			
 			con = Utils.getConnection();
 
@@ -47,8 +47,8 @@ public class MissingOrders implements Runnable {
 			
 			ArrayList<JSONObject> orders = Utils.getLatestOrdersForGroup(groupId, con, true);  // false puts isBatchable = 0 on the query so only the unbatched latest orders are returned.
 			
-			myLog.write(groupName+" has "+orders.size()+" orders.");
-			myLog.newLine();
+			//myLog.write(groupName+" has "+orders.size()+" orders.");
+			//myLog.newLine();
 			
 			log.info(groupName+" has "+orders.size()+" orders.");
 			
@@ -79,8 +79,8 @@ public class MissingOrders implements Runnable {
 				rs = batchOrdersCnt.executeQuery();
 				if (rs.next()) {
 					int num = rs.getInt("cnt");
-					myLog.write("orderId: "+oId+" has "+num+" in batchOrders");
-					myLog.newLine();
+					//myLog.write("orderId: "+oId+" has "+num+" in batchOrders");
+					//myLog.newLine();
 					//log.info("orderId: "+oId+" has "+num+" in batchOrders");
 					if (num > 0) {
 						inBatchOrders.add(memId);
@@ -91,8 +91,8 @@ public class MissingOrders implements Runnable {
 						notInBatchOrders.put(memId, obj);
 					}
 				} else {
-					myLog.write("orderId: "+oId+" has 0 in batchOrders");
-					myLog.newLine();
+					//myLog.write("orderId: "+oId+" has 0 in batchOrders");
+					//myLog.newLine();
 					//log.info("orderId: "+oId+" has 0 in batchOrders");
 					notInBatchOrders.put(memId, obj);
 				}
@@ -111,11 +111,11 @@ public class MissingOrders implements Runnable {
 					String id = (String)obj.get("orderId");
 					update.setString(1, id);
 					update.executeUpdate();
-					myLog.write("orderId: "+id+" updated");
-					myLog.newLine();
+					//myLog.write("orderId: "+id+" updated");
+					//myLog.newLine();
 					log.info("orderId: "+id+" updated");
-					bw.write("\""+obj.get("name")+"\",\""+obj.get("groupId")+"\",\""+obj.get("memberId")+"\",\""+obj.get("firstName")+" "+obj.get("lastName")+"\",\""+obj.get("dateOfBirth")+"\",\""+obj.get("ssn")+"\"");
-					bw.newLine();
+					//bw.write("\""+obj.get("name")+"\",\""+obj.get("groupId")+"\",\""+obj.get("memberId")+"\",\""+obj.get("firstName")+" "+obj.get("lastName")+"\",\""+obj.get("dateOfBirth")+"\",\""+obj.get("ssn")+"\"");
+					//bw.newLine();
 				}
 				update.close();
 			}
@@ -129,12 +129,12 @@ public class MissingOrders implements Runnable {
 			try {
 				con.close();
 			} catch (Exception e) {}
-			try {
-				bw.close();
-			} catch (Exception e) {}
-			try {
-				myLog.close();
-			} catch (Exception e) {}
+			//try {
+				//bw.close();
+			//} catch (Exception e) {}
+			//try {
+				//myLog.close();
+			//} catch (Exception e) {}
 		}
 
 	}
@@ -195,5 +195,4 @@ public class MissingOrders implements Runnable {
 			}
 		}
 	}
-
 }
