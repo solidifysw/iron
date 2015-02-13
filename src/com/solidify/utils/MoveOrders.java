@@ -17,6 +17,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -32,7 +33,7 @@ public class MoveOrders extends HttpServlet{
         int groupId = -1;
         int packageId = -1;
         int offerId = -1;
-        HashMap<Integer,Integer> offers = new HashMap();
+        HashMap<String,Integer> offers = new HashMap<String, Integer>(); // productConfigUUID, offerId
 
         try {
             con = Utils.getConnection();
@@ -85,29 +86,72 @@ public class MoveOrders extends HttpServlet{
                     savePkg.save();
                     packageId = savePkg.getPackageId();
 
+                    // write the classes for this package
+                    sql = "SELECT data FROM sinc.classes WHERE packageId = ? AND groupId = ? AND deleted = 0";
+                    PreparedStatement select = con.prepareStatement(sql);
+                    select.setString(1,pkgUUID);
+                    select.setString(2,groupUUID);
+                    rs = select.executeQuery();
+                    JSONObject cls = null;
+                    HashSet<JSONObject> classes = new HashSet<JSONObject>();
+                    while (rs.next()) {
+                        cls = new JSONObject(rs.getString("data"));
+                        classes.add(cls);
+                    }
+                    rs.close();
+                    select.close();
+                    HashSet<Cls> savedClasses = new HashSet<Cls>();
+                    if (classes.size() > 0) {
+                        for (JSONObject cl : classes) {
+                            Cls saveClass = new Cls(groupId,packageId,"","employerClass","=",cl.getString("name"),con);
+                            saveClass.save();
+                            saveClass.setSourceData(cl);  // put the source json data in this object to locate the product configs later
+                            savedClasses.add(saveClass);
+                        }
+                    }
 
-                    sql = "SELECT data FROM sinc.productConfigurations WHERE packageId = ?";
+                    // Now write the offer records
+                    sql = "SELECT id, data FROM sinc.productConfigurations WHERE packageId = ? AND groupId = ? AND deleted = 0";
                     PreparedStatement pack = con.prepareStatement(sql);
                     pack.setString(1,pkgUUID);
+                    pack.setString(2,groupUUID);
                     rs = pack.executeQuery();
+                    HashSet<JSONObject> productConfigs = new HashSet<JSONObject>();
                     while(rs.next()) {
                         String data = rs.getString("data");
                         JSONObject config = new JSONObject(data);
-                        String solidifyId = config.getString("solidifyId");
-
-                        if (!"".equals(solidifyId)) {
-                            Product prod = Product.findProduct(solidifyId, con);
-                            if (prod != null) {
-                                // write an offer record
-                                Offer offer = new Offer(groupId, prod.getProductId(), packageId, con);
-                                offer.save();
-                                offerId = offer.getOfferId();
-                                offers.put(new Integer(prod.getProductId()), new Integer(offerId)); // used later when writing app coverage lines.
-                            }
-                        }
+                        productConfigs.add(config);
                     }
                     rs.close();
                     pack.close();
+
+                    if (!productConfigs.isEmpty()) {
+                        for (JSONObject config : productConfigs) {
+                            String productConfigUUID = config.getString("id");
+                            String solidifyId = config.getString("solidifyId");
+                            if (!"".equals(solidifyId)) {
+                                Product prod = Product.findProduct(solidifyId, con);
+                                if (prod != null) {
+                                    // write an offer record
+                                    Offer offer = new Offer(groupId, prod.getProductId(), packageId, con);
+                                    offer.save();
+                                    offerId = offer.getOfferId();
+                                    offers.put(productConfigUUID, offerId); // used later when writing app coverage lines.
+                                }
+                            }
+                        }
+                    }
+
+                    // write the classOffers records
+                    for (String configUUID : offers.keySet()) {
+                        for (Cls c : savedClasses) {
+                            if (c.hasProductConfig(configUUID)) {
+                                Integer oId = offers.get(configUUID);
+                                ClassOffer clsOffer = new ClassOffer(c.getClassId(), oId.intValue(), con);
+                                clsOffer.save();
+                            }
+                        }
+                    }
                 }
             }
 
