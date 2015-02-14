@@ -1,0 +1,11 @@
+delete from FE.AppsToEmployees;
+delete from FE.DependentsToEmployees;
+delete from FE.CoveredPeople;
+delete from FE.Coverages;
+delete from FE.AddressesToPeople;
+delete from FE.EmploymentInfo;
+delete from FE.People;
+delete from FE.Apps;
+delete from FE.Offers;
+delete from FE.Packages;
+delete from FE.Groups;

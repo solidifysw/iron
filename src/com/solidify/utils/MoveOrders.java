@@ -182,6 +182,7 @@ public class MoveOrders extends HttpServlet{
                 int appId = a.getAppId();
                 AppsToEmployees ate = new AppsToEmployees(appId,employeeId,con);
                 ate.save();
+
                 // write dependents
                 JSONArray deps = app.getJSONArray("dependents");
                 for (int i = 0; i<deps.length(); i++) {
@@ -193,10 +194,14 @@ public class MoveOrders extends HttpServlet{
                     DependentsToEmployees dte = new DependentsToEmployees(employeeId,depId,dep.getString("relationship"),con);
                     dte.save();
                 }
+
                 // write coverages
                 JSONArray covs = app.getJSONArray("covs");
                 for (int i=0; i<covs.length(); i++) {
                     JSONObject cov = covs.getJSONObject(i);
+
+
+                    // need to get the offers for the ee's class
                     String solidifyId = cov.getString("productId");
                     Product prod = Product.findProduct(solidifyId,con);
                     Integer prodId = new Integer(prod.getProductId());
