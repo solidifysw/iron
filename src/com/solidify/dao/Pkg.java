@@ -1,6 +1,7 @@
 package com.solidify.dao;
 
 import com.solidify.admin.reports.Utils;
+import com.solidify.exceptions.MissingProperty;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,15 +15,14 @@ import java.util.Date;
  */
 public class Pkg {
     private int packageId;
-    private int groupId;
+    private Group group;
     private Date enrollStart;
     private Date enrollEnd;
     private String situsState;
-    private Connection con;
 
-    public Pkg(int groupId, String enrollStartStr, String enrollEndStr, String situsState, Connection con) {
+    public Pkg(Group group, String enrollStartStr, String enrollEndStr, String situsState) {
         this.packageId = -1;
-        this.groupId = groupId;
+        this.group = group;
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
         Date start = null;
         Date end = null;
@@ -35,28 +35,43 @@ public class Pkg {
         this.enrollStart = start;
         this.enrollEnd = end;
         this.situsState = situsState;
-        this.con = con;
     }
 
     public int getPackageId() {
         return packageId;
     }
 
-    public void save() throws SQLException {
-        if (groupId >= 0 && enrollStart != null && enrollEnd != null) {
-            String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState) VALUES (?,?,?,?)";
-            PreparedStatement insert = con.prepareStatement(sql);
-            insert.setInt(1,groupId);
-            java.sql.Date start = new java.sql.Date(enrollStart.getTime());
-            java.sql.Date end = new java.sql.Date(enrollEnd.getTime());
-            insert.setDate(2,start);
-            insert.setDate(3,end);
-            insert.setString(4,situsState);
-            insert.executeUpdate();
-            ResultSet rs = insert.getGeneratedKeys();
-            if (rs.next()) {
-                this.packageId = rs.getInt(1);
-            }
+    public void save() throws SQLException, MissingProperty {
+        if (!group.isLoaded()) {
+            throw new MissingProperty("Missing groupId");
         }
+        insert();
+    }
+
+    private void insert() throws SQLException {
+        Connection con = null;
+        try {
+            if (group.isLoaded() && enrollStart != null && enrollEnd != null) {
+                String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState) VALUES (?,?,?,?)";
+                PreparedStatement insert = con.prepareStatement(sql);
+                insert.setInt(1, group.getGroupId());
+                java.sql.Date start = new java.sql.Date(enrollStart.getTime());
+                java.sql.Date end = new java.sql.Date(enrollEnd.getTime());
+                insert.setDate(2, start);
+                insert.setDate(3, end);
+                insert.setString(4, situsState);
+                insert.executeUpdate();
+                ResultSet rs = insert.getGeneratedKeys();
+                if (rs.next()) {
+                    this.packageId = rs.getInt(1);
+                }
+            }
+        } finally {
+            if (con != null) con.close();
+        }
+    }
+
+    public boolean isLoaded() {
+        return packageId > -1 ? true : false;
     }
 }

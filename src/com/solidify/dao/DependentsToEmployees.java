@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 
 import java.sql.Connection;
@@ -11,45 +12,37 @@ import java.util.prefs.PreferenceChangeEvent;
  * Created by jrobins on 2/10/15.
  */
 public class DependentsToEmployees {
-    private int employeeId;
-    private int dependentId;
-    private String relationship;
-    private Connection con;
+    private Person ee;
+    private Dependent dp;
 
-    public DependentsToEmployees(int employeeId, int dependentId, String relationship, Connection con) {
-        this.employeeId = employeeId;
-        this.dependentId = dependentId;
-        this.relationship = relationship;
-        this.con = con;
+    public DependentsToEmployees(Person ee, Dependent dp) {
+        this.ee = ee;
+        this.dp = dp;
     }
 
     public void save() throws MissingProperty, SQLException {
-        String error = "";
-        if (employeeId < 0) {
-            error += "missing employeeId ";
+        if (!ee.isLoaded()) {
+            throw new MissingProperty("ee is not loaded");
         }
-        if (dependentId < 0) {
-            error += "missing dependentId ";
+        if (!dp.isLoaded()) {
+            throw new MissingProperty("dp is not loaded");
         }
-        if (relationship == null || "".equals(relationship)) {
-            error += "missing relationship ";
-        }
-        if (con == null) {
-            error += "missing connection object ";
-        }
-        if (!"".equals(error)) {
-            throw new MissingProperty(error);
-        } else {
-            insert();
-        }
+        insert();
     }
 
     private void insert() throws SQLException {
-        String sql = "INSERT INTO FE.DependentsToEmployees (employeeId,dependentId,relationship) VALUES (?,?,?)";
-        PreparedStatement insert = con.prepareStatement(sql);
-        insert.setInt(1,employeeId);
-        insert.setInt(2,dependentId);
-        insert.setString(3,relationship);
-        insert.executeUpdate();
+        Connection con = null;
+        try {
+            con = Utils.getConnection();
+            String sql = "INSERT INTO FE.DependentsToEmployees (employeeId,dependentId,relationship) VALUES (?,?,?)";
+            PreparedStatement insert = con.prepareStatement(sql);
+            insert.setInt(1, ee.getPersonId());
+            insert.setInt(2, dp.getPersonId());
+            insert.setString(3, dp.getRelationship());
+            insert.executeUpdate();
+            insert.close();
+        } finally {
+            if (con != null) con.close();
+        }
     }
 }

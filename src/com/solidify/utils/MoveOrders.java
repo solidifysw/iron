@@ -2,6 +2,7 @@ package com.solidify.utils;
 
 import com.solidify.admin.reports.Utils;
 import com.solidify.dao.*;
+import com.solidify.exceptions.NoValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -29,115 +30,71 @@ public class MoveOrders extends HttpServlet{
     private static final Logger log = LogManager.getLogger();
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        Connection con = null;
         int groupId = -1;
         int packageId = -1;
         int offerId = -1;
-        HashMap<String,Integer> offers = new HashMap<String, Integer>(); // productConfigUUID, offerId
+        String sql = null;
+        ResultSet rs = null;
+        HashMap<String,Offer> offers = new HashMap<String,Offer>(); // productConfigUUID, offerId
 
         try {
-            con = Utils.getConnection();
-
             // get the list of groups from sinc and loop through them
-            String groupUUID = "1a83f17c-34e3-45c0-b323-d6174400ab05";
-            String groupName = "BatchTest";
+            SincGroups sg = new SincGroups();
+            HashSet<JSONObject> sincGroups = sg.getGroups();
+            for (JSONObject sincGroup : sincGroups) {
 
-            // Add the group to FE.groups if it doesn't exist
-            String sql = "INSERT INTO `FE`.`Groups` (`name`,active) VALUES ('"+groupName+"',1)";
-            PreparedStatement groupInsert = con.prepareStatement(sql);
-            groupInsert.executeUpdate();
+                String groupUUID = sincGroup.getString("id");
+                String groupName = sincGroup.getString("name");
+                String alias = sincGroup.getString("alias");
+                JSONObject emp = sincGroup.getJSONObject("employer");
 
-            ResultSet rs = groupInsert.getGeneratedKeys();
-            if (rs.next()) {
-                groupId = rs.getInt(1);
-            }
+                // Add the group to FE.groups if it doesn't exist
+                Group group = new Group(groupName, alias);
+                Address address = new Address("Main", emp.getString("address1"), emp.getString("address2"), emp.getString("city"), emp.getString("state"), emp.getString("zip"));
+                group.addAddress(address);
+                group.save();
+                //groupId = group.getGroupId();
 
-            if (groupId < 0) {
-                return;
-            }
-            rs.close();
-            groupInsert.close();
+                // For each group, get active packages
+                SincPackages sp = new SincPackages(groupUUID);
+                HashMap<String, JSONObject> pkgs = sp.getPackages(); // <pkgUUID,json>
 
-            // For each group, get active packages
-            sql = "SELECT id, data FROM sinc.packages WHERE deleted = 0 AND groupId = ?";
-            PreparedStatement packs = con.prepareStatement(sql);
-            packs.setString(1,groupUUID);
-            rs = packs.executeQuery();
-            HashMap<String,JSONObject> pkgs = new HashMap();
-            while(rs.next()) {
-                // Loop through each package
-                String data = rs.getString("data");
-                JSONObject pkg = new JSONObject(data);
-                String pkgUUID = rs.getString("id");
-                pkgs.put(pkgUUID,pkg);
-            }
-            rs.close();
-            packs.close();
-
-            // loop through each package and write a package record and then an offer record for each product in the package
-            // Create a HashMap of productId,offerId for use later when writing the coverage objects
-            if (pkgs.size() > 0) {
-                for (Iterator<String> it = pkgs.keySet().iterator(); it.hasNext();) {
-                    String pkgUUID = it.next();
+                // loop through each package and write a package record and then an offer record for each product in the package
+                // Create a HashMap of productId,offerId for use later when writing the coverage objects
+                if (pkgs.size() > 0) for (String pkgUUID : pkgs.keySet()) {
                     // write a Package record to get a packageId
                     JSONObject pkg = pkgs.get(pkgUUID);
                     JSONObject openEnrollment = pkg.getJSONObject("openEnrollment");
-                    Pkg savePkg = new Pkg(groupId,openEnrollment.getString("startDate"),openEnrollment.getString("endDate"),pkg.getString("situsState"),con);
+                    Pkg savePkg = new Pkg(group, openEnrollment.getString("startDate"), openEnrollment.getString("endDate"), pkg.getString("situsState"));
                     savePkg.save();
-                    packageId = savePkg.getPackageId();
+                    //packageId = savePkg.getPackageId();
 
                     // write the classes for this package
-                    sql = "SELECT data FROM sinc.classes WHERE packageId = ? AND groupId = ? AND deleted = 0";
-                    PreparedStatement select = con.prepareStatement(sql);
-                    select.setString(1,pkgUUID);
-                    select.setString(2,groupUUID);
-                    rs = select.executeQuery();
-                    JSONObject cls = null;
-                    HashSet<JSONObject> classes = new HashSet<JSONObject>();
-                    while (rs.next()) {
-                        cls = new JSONObject(rs.getString("data"));
-                        classes.add(cls);
-                    }
-                    rs.close();
-                    select.close();
+                    SincClasses sc = new SincClasses(groupUUID,pkgUUID);
+                    HashSet<JSONObject> classes = sc.getClasses();
+
                     HashSet<Cls> savedClasses = new HashSet<Cls>();
-                    if (classes.size() > 0) {
-                        for (JSONObject cl : classes) {
-                            Cls saveClass = new Cls(groupId,packageId,"","employerClass","=",cl.getString("name"),con);
-                            saveClass.save();
-                            saveClass.setSourceData(cl);  // put the source json data in this object to locate the product configs later
-                            savedClasses.add(saveClass);
-                        }
+                    if (classes.size() > 0) for (JSONObject cl : classes) {
+                        Cls saveClass = new Cls(group, savePkg, "", "employerClass", "=", cl.getString("name"));
+                        saveClass.save();
+                        saveClass.setSourceData(cl);  // put the source json data in this object to locate the product configs later
+                        savedClasses.add(saveClass);
                     }
 
                     // Now write the offer records
-                    sql = "SELECT id, data FROM sinc.productConfigurations WHERE packageId = ? AND groupId = ? AND deleted = 0";
-                    PreparedStatement pack = con.prepareStatement(sql);
-                    pack.setString(1,pkgUUID);
-                    pack.setString(2,groupUUID);
-                    rs = pack.executeQuery();
-                    HashSet<JSONObject> productConfigs = new HashSet<JSONObject>();
-                    while(rs.next()) {
-                        String data = rs.getString("data");
-                        JSONObject config = new JSONObject(data);
-                        productConfigs.add(config);
-                    }
-                    rs.close();
-                    pack.close();
+                    SincProductConfigurations spc = new SincProductConfigurations(groupUUID,pkgUUID);
+                    HashSet<JSONObject> productConfigs = spc.getProductConfigurations();
 
                     if (!productConfigs.isEmpty()) {
                         for (JSONObject config : productConfigs) {
                             String productConfigUUID = config.getString("id");
                             String solidifyId = config.getString("solidifyId");
                             if (!"".equals(solidifyId)) {
-                                Product prod = Product.findProduct(solidifyId, con);
-                                if (prod != null) {
-                                    // write an offer record
-                                    Offer offer = new Offer(groupId, prod.getProductId(), packageId, con);
-                                    offer.save();
-                                    offerId = offer.getOfferId();
-                                    offers.put(productConfigUUID, offerId); // used later when writing app coverage lines.
-                                }
+                                Product prod = new Product(solidifyId);
+                                // write an offer record
+                                Offer offer = new Offer(group, prod, savePkg);
+                                offer.save();
+                                offers.put(productConfigUUID, offer); // used later when writing app coverage lines.
                             }
                         }
                     }
@@ -146,121 +103,121 @@ public class MoveOrders extends HttpServlet{
                     for (String configUUID : offers.keySet()) {
                         for (Cls c : savedClasses) {
                             if (c.hasProductConfig(configUUID)) {
-                                Integer oId = offers.get(configUUID);
-                                ClassOffer clsOffer = new ClassOffer(c.getClassId(), oId.intValue(), con);
+                                Offer off = offers.get(configUUID);
+                                ClassOffer clsOffer = new ClassOffer(c, off);
                                 clsOffer.save();
                             }
                         }
                     }
                 }
-            }
 
-            List<JSONObject> apps = Utils.getLatestOrdersForGroup(groupUUID,con);
+                List<JSONObject> apps = Utils.getLatestOrdersForGroup(groupUUID);
 
-            for (JSONObject app : apps) {
-                HashMap<String,Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
-                Person ee = new Person(app.getString("firstName"),app.getString("lastName"),true,app.getString("ssn"),con);
-                ee.save();
-                int employeeId = ee.getPersonId();
-                EmploymentInfo ei = new EmploymentInfo(employeeId);
-                ei.setAnnualSalary(app.getString("annualSalary"));
-                ei.setDatabaseConnection(con);
-                ei.setDateOfHire(app.getString("dateOfHire"));
-                ei.setDeductionsPerYear(app.getInt("deductionsPerYear"));
-                ei.setDepartment(app.getString("department"));
-                ei.setEmployeeId(app.getString("employeeId"));
-                ei.setEmployerClass(app.getString("class"));
-                ei.setHoursPerWeek(app.getInt("hoursPerWeek"));
-                ei.setLocationCode(app.getString("locationCode"));
-                ei.setLocationDescription(app.getString("locationDescription"));
-                ei.setOccupation(app.getString("occupation"));
-                ei.setStatus(app.getString("status"));
-                ei.save();
+                for (JSONObject app : apps) {
+                    HashMap<String, Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
+                    Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfHire"),app.getString("class"),
+                            app.getString("occupation"),app.getString("employeeId"),app.getString("locationCode"),app.getString("locationDescription"),app.getString("status"),
+                            app.getString("department"),app.getInt("hoursPerWeek"),app.getInt("deductionsPerYear"),app.getString("annualSalary"),null,null);
 
-                App a = new App(groupId, app.getString("orderId"), 2, con);
-                a.save();
-                int appId = a.getAppId();
-                AppsToEmployees ate = new AppsToEmployees(appId,employeeId,con);
-                ate.save();
+                    Address addr = new Address("home",app.getString("address1"),app.getString("address2"),app.getString("city"),app.getString("state"),app.getString("zip"));
+                    ee.addAddress(addr);
+                    /*
+                    EmploymentInfo ei = new EmploymentInfo(ee);
+                    ei.setAnnualSalary(app.getString("annualSalary"));
+                    ei.setDateOfHire(app.getString("dateOfHire"));
+                    ei.setDeductionsPerYear(app.getInt("deductionsPerYear"));
+                    ei.setDepartment(app.getString("department"));
+                    ei.setEmployeeId(app.getString("employeeId"));
+                    ei.setEmployerClass(app.getString("class"));
+                    ei.setHoursPerWeek(app.getInt("hoursPerWeek"));
+                    ei.setLocationCode(app.getString("locationCode"));
+                    ei.setLocationDescription(app.getString("locationDescription"));
+                    ei.setOccupation(app.getString("occupation"));
+                    ei.setStatus(app.getString("status"));
+                    ee.setEmploymentInfo(ei);
+                    */
+                    ee.save();
 
-                // write dependents
-                JSONArray deps = app.getJSONArray("dependents");
-                for (int i = 0; i<deps.length(); i++) {
-                    JSONObject dep = deps.getJSONObject(i);
-                    Person p = new Person(dep.getString("firstName"),dep.getString("lastName"),false,dep.getString("ssn"),con);
-                    p.save();
-                    dependents.put(dep.getString("id"),p);
-                    int depId = p.getPersonId();
-                    DependentsToEmployees dte = new DependentsToEmployees(employeeId,depId,dep.getString("relationship"),con);
-                    dte.save();
-                }
+                    App a = new App(group, app.getString("orderId"), 2);
+                    a.save();
+                    int appId = a.getAppId();
+                    AppsToEmployees ate = new AppsToEmployees(a, ee);
+                    ate.save();
 
-                // write coverages
-                JSONArray covs = app.getJSONArray("covs");
-                for (int i=0; i<covs.length(); i++) {
-                    JSONObject cov = covs.getJSONObject(i);
+                    // write dependents
+                    JSONArray deps = app.getJSONArray("dependents");
+                    for (int i = 0; i < deps.length(); i++) {
+                        JSONObject dep = deps.getJSONObject(i);
+                        Dependent d = new Dependent(ee, dep.getString("firstName"), dep.getString("lastName"),dep.getString("ssn"),dep.getString("relationship"));
+                        d.save();
 
-
-                    // need to get the offers for the ee's class
-                    String solidifyId = cov.getString("productId");
-                    Product prod = Product.findProduct(solidifyId,con);
-                    Integer prodId = new Integer(prod.getProductId());
-                    offerId = new Integer(-1);
-                    if (offers.containsKey(prodId)) {
-                        offerId = offers.get(prodId);
+                        dependents.put(dep.getString("id"), d); // queue dependents for writing coverages later
                     }
-                    if (offerId < 0) {
-                        throw new Exception("Can't find the appId.  Can't write coverage record");
-                    }
-                    String election = null;
-                    int electionTypeId = -1;
-                    if (!cov.has("benefit")) {
-                        throw new Exception("Coverage object doesn't have benefit field.  Can't write coverage record.");
-                    }
-                    election = cov.getString("benefit");
-                    electionTypeId = Coverage.getElectionTypeId(election,con);
-                    Coverage c = new Coverage(offerId,appId, cov.getString("benefit"), electionTypeId, con);
-                    c.save();
-                    int coverageId = c.getCoverageId();
-                    // VTL
-                    if (cov.getString("type").equals("VTL") && cov.getString("subType").equals("ee")) {
-                        CoveredPeople cp = new CoveredPeople(coverageId,employeeId,con);
-                        cp.save();
-                    } else if ((cov.getString("type")).equals("VTL") && !(cov.getString("subType")).equals("ee")) {
-                        JSONArray covered = cov.getJSONArray("coveredDependents");
-                        for (int j = 0; j < covered.length(); j++) {
-                            String depId = covered.getString(j);
-                            if (!dependents.containsKey(depId)) {
-                                throw new Exception("Can't find the covered dependent: " + depId);
-                            }
-                            Person dep = dependents.get(depId);
-                            CoveredPeople cp = new CoveredPeople(coverageId, dep.getPersonId(), con);
-                            cp.save();
+
+                    // write coverages
+                    JSONArray covs = app.getJSONArray("covs");
+                    for (int i = 0; i < covs.length(); i++) {
+                        JSONObject cov = covs.getJSONObject(i);
+                        String splitId = cov.getString("splitId");
+                        Offer o = null;
+                        if (offers.containsKey(splitId)) {
+                            o = offers.get(splitId);
                         }
-                    } else if ((cov.getString("type")).equals("MEDICAL") && electionTypeId == 1) {
-                        // Medical enrolled
-                        CoveredPeople cp = new CoveredPeople(coverageId, employeeId, con);
-                        cp.save();
-                        JSONArray covered = cov.getJSONArray("coveredDependents");
-                        for (int j = 0; j < covered.length(); j++) {
-                            String depId = covered.getString(j);
-                            if (!dependents.containsKey(depId)) {
-                                throw new Exception("Can't find the covered dependent: " + depId);
-                            }
-                            Person dep = dependents.get(depId);
-                            cp = new CoveredPeople(coverageId, dep.getPersonId(), con);
+
+                        if (o == null) {
+                            throw new Exception("Can't write coverage record no offer found");
+                        }
+                        String election = null;
+                        int electionTypeId = -1;
+                        if (!cov.has("benefit")) {
+                            throw new Exception("Coverage object doesn't have benefit field.  Can't write coverage record.");
+                        }
+                        election = cov.getString("benefit");
+
+                        try {
+                            electionTypeId = Coverage.getElectionTypeId(election);
+                        } catch (NoValue n) {
+                            log.error("Couldn't find an electionTypeId for election: "+election);
+                            break;
+                        }
+                        Coverage c = new Coverage(o, a, cov.getString("benefit"), electionTypeId);
+                        c.save();
+
+                        // VTL
+                        if (cov.getString("type").equals("VTL") && cov.getString("subType").equals("ee")) {
+                            CoveredPeople cp = new CoveredPeople(c, ee);
                             cp.save();
+                        } else if ((cov.getString("type")).equals("VTL") && !(cov.getString("subType")).equals("ee")) {
+                            JSONArray covered = cov.getJSONArray("coveredDependents");
+                            for (int j = 0; j < covered.length(); j++) {
+                                String depId = covered.getString(j);
+                                if (!dependents.containsKey(depId)) {
+                                    throw new Exception("Can't find the covered dependent: " + depId);
+                                }
+                                Person dep = dependents.get(depId);
+                                CoveredPeople cp = new CoveredPeople(c, dep);
+                                cp.save();
+                            }
+                        } else if ((cov.getString("type")).equals("MEDICAL") && electionTypeId == 1) {
+                            // Medical enrolled
+                            CoveredPeople cp = new CoveredPeople(c, ee);
+                            cp.save();
+                            JSONArray covered = cov.getJSONArray("coveredDependents");
+                            for (int j = 0; j < covered.length(); j++) {
+                                String depId = covered.getString(j);
+                                if (!dependents.containsKey(depId)) {
+                                    throw new Exception("Can't find the covered dependent: " + depId);
+                                }
+                                Person dep = dependents.get(depId);
+                                cp = new CoveredPeople(c, dep);
+                                cp.save();
+                            }
                         }
                     }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            try {
-                if (con != null) con.close();
-            } catch (Exception e) {}
         }
     }
-
 }

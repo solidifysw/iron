@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 
 import java.sql.Connection;
@@ -14,63 +15,52 @@ import java.util.Date;
 public class App {
 
     private int appId;
-    private int groupId;
-    private String orderId;
+    private Group group;
+    private String sincOrderId;
     private Date dateSaved;
     private int appSourceId;
-    private Connection con;
 
-    public App(int groupId, String orderId, int appSourceId, Connection con) {
+    public App(Group group, String sincOrderId, int appSourceId) {
         this.appId = -1;
-        this.groupId = groupId;
-        this.orderId = orderId;
+        this.group = group;
+        this.sincOrderId = sincOrderId;
         this.appSourceId = appSourceId;
-        this.con = con;
     }
 
     public int getAppId() {
         return appId;
     }
 
-    public int getGroupId() {
-        return groupId;
-    }
-
-    public String getOrderId() {
-        return orderId;
-    }
-
-    public Date getDateSaved() {
-        return dateSaved;
-    }
-
-    public int getAppSourceId() { return appSourceId; }
-
     public void save() throws MissingProperty, SQLException {
-        String error = "";
-        if (groupId < 0) {
-            error += "missing groupId ";
+        if (!group.isLoaded()) {
+           throw new MissingProperty("group is not loaded");
         }
-        if (orderId == null || "".equals(orderId)) {
-            error += "missing orderId";
+        if (sincOrderId == null || "".equals(sincOrderId)) {
+            throw new MissingProperty("missing the sinc orderId");
         }
-        if (!"".equals(error)) {
-            throw new MissingProperty(error);
-        } else {
-            insert();
-        }
+        insert();
     }
 
     private void insert() throws SQLException {
-        String sql = "INSERT INTO FE.apps (groupId,orderId,appSourceId) VALUES (?,?,?)";
-        PreparedStatement insert = con.prepareStatement(sql);
-        insert.setInt(1, groupId);
-        insert.setString(2,orderId);
-        insert.setInt(3,appSourceId);
-        insert.executeUpdate();
-        ResultSet rs = insert.getGeneratedKeys();
-        if (rs.next()) {
-            this.appId = rs.getInt(1);
+        Connection con = null;
+        try {
+            con = Utils.getConnection();
+            String sql = "INSERT INTO FE.apps (groupId,orderId,appSourceId) VALUES (?,?,?)";
+            PreparedStatement insert = con.prepareStatement(sql);
+            insert.setInt(1, group.getGroupId());
+            insert.setString(2, sincOrderId);
+            insert.setInt(3, appSourceId);
+            insert.executeUpdate();
+            ResultSet rs = insert.getGeneratedKeys();
+            if (rs.next()) {
+                this.appId = rs.getInt(1);
+            }
+        } finally {
+            if (con != null) con.close();
         }
+    }
+
+    public boolean isLoaded() {
+        return appId > -1 ? true : false;
     }
 }

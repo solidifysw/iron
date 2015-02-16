@@ -1,8 +1,8 @@
 package com.solidify.pdf;
 
-import com.aspose.pdf.*;
-import com.aspose.pdf.drawing.Graph;
-import com.aspose.pdf.drawing.Line;
+//import com.aspose.pdf.*;
+//import com.aspose.pdf.drawing.Graph;
+//import com.aspose.pdf.drawing.Line;
 import com.solidify.dao.*;
 import com.solidify.dao.Signature;
 import org.json.JSONObject;
@@ -28,9 +28,9 @@ public class CreatePDF {
         tb.appendText(frag);
         doc.save(dataDir+"test.pdf");*/
 
-        Signature sig = new Signature("083b9cbb-9af6-46c9-b542-72b9d9d4b902");
-        JSONObject data = sig.getDataPoints();
-        System.out.println(data.toString());
+       // Signature sig = new Signature("083b9cbb-9af6-46c9-b542-72b9d9d4b902");
+        //JSONObject data = sig.getDataPoints();
+        //System.out.println(data.toString());
 
         /*Document doc = new Document();
         Page page = doc.getPages().add();

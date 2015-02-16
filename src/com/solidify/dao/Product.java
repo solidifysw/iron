@@ -2,6 +2,7 @@ package com.solidify.dao;
 
 import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProducts;
+import com.solidify.exceptions.MissingProperty;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,22 +19,22 @@ import java.util.List;
 public class Product {
     private static final Logger log = LogManager.getLogger();
     private int productId;
-    private String name;
-    private String carrierName;
+    private String solidifyId;
+    private String displayName;
     private int carrierId;
-    private Connection con;
-    private static ArrayList<Product> products;
+    private String carrierName;
 
-    public Product(int productId, String name, int carrierId, String carrierName, Connection con) {
+    public Product(int productId, String solidifyId, String displayName, int carrierId, String carrierName) {
         this.productId = productId;
-        this.name = name;
+        this.solidifyId = solidifyId;
+        this.displayName = displayName;
         this.carrierId = carrierId;
         this.carrierName = carrierName;
-        this.con = con;
     }
 
-    public Product(int productId, String name, int carrierId, String carrierName) {
-        this(productId,name,carrierId,carrierName,null);
+    public Product(String solidifyId) throws SQLException, MissingProperty {
+        this.solidifyId = solidifyId;
+        load();
     }
 
     public int getProductId() {
@@ -44,16 +45,16 @@ public class Product {
         this.productId = productId;
     }
 
-    public String getName() {
-        return name;
+    public String getSolidifyId() {
+        return solidifyId;
     }
 
     public String getCarrierName() {
         return carrierName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setSolidifyId(String solidifyId) {
+        this.solidifyId = solidifyId;
     }
 
     public int getCarrierId() {
@@ -64,32 +65,29 @@ public class Product {
         this.carrierId = carrierId;
     }
 
-    public static ArrayList<Product> getAllProducts(Connection con) throws SQLException, MissingProducts {
-        if (products == null) {
-            products = new ArrayList();
-            String sql = "SELECT FE.Products.name, FE.Products.carrierId, FE.Carriers.name AS carrierName, FE.Products.productId FROM FE.Products, FE.Carriers WHERE FE.Products.carrierId = FE.Carriers.carrierId AND FE.Carriers.active = 1;";
-            PreparedStatement select = con.prepareStatement(sql);
-            ResultSet rs = select.executeQuery();
-            while (rs.next()) {
-                Product p = new Product(rs.getInt("productId"), rs.getString("name"), rs.getInt("carrierId"),rs.getString("carrierName"));
-                products.add(p);
-            }
-            if (products.size() == 0) throw new MissingProducts();
+    private void load() throws SQLException, MissingProperty {
+        if (solidifyId == null || "".equals(solidifyId)) {
+            throw new MissingProperty("Missing the solidifyId");
         }
-        return products;
+       Connection con = null;
+        try {
+            String sql = "SELECT FE.Products.productId, FE.Products.displayName, FE.Products.carrierId, FE.Carriers.name AS carrierName FROM FE.Products, FE.Carriers " +
+                    "WHERE FE.Products.carrierId = FE.Carriers.carrierId AND FE.Carriers.active = 1 AND FE.Products.solidifyId = ?";
+            PreparedStatement select = con.prepareStatement(sql);
+            select.setString(1,solidifyId);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) {
+                productId = rs.getInt("productId");
+                displayName = rs.getString("displayName");
+                carrierId = rs.getInt("carrierId");
+                carrierName = rs.getString("carrierName");
+            }
+        } finally {
+            if (con != null) con.close();
+        }
     }
 
-    public static Product findProduct(String name, Connection con) throws SQLException, MissingProducts {
-        if (products == null) {
-            products = getAllProducts(con);
-        }
-        Product out = null;
-        for (Product prod : products) {
-            if (prod.getName().equals(name)) {
-                out = prod;
-                break;
-            }
-        }
-        return out;
+    public boolean isLoaded() {
+        return productId > -1 ? true : false;
     }
 }

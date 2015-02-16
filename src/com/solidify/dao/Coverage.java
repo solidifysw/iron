@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 import com.solidify.exceptions.NoValue;
 
@@ -13,18 +14,16 @@ import java.sql.SQLException;
  */
 public class Coverage {
     private int coverageId;
-    private int appId;
-    private int offerId;
+    private App app;
+    private Offer offer;
     private String benefit;
     private int electionTypeId;
-    private Connection con;
 
-    public Coverage(int offerId, int appId, String benefit, int electionTypeId, Connection con) {
-        this.offerId = offerId;
-        this.appId = appId;
+    public Coverage(Offer offer, App app, String benefit, int electionTypeId) {
+        this.offer = offer;
+        this.app = app;
         this.benefit = benefit;
         this.electionTypeId = electionTypeId;
-        this.con = con;
         this.coverageId = -1;
     }
 
@@ -33,55 +32,66 @@ public class Coverage {
     }
 
     public void save() throws SQLException, MissingProperty {
-        String error = "";
-        if (appId < 0) {
-            error += "missing appId ";
+        if (!offer.isLoaded()) {
+            throw new MissingProperty("offer is not loaded");
         }
-        if (offerId < 0) {
-            error += "missing offerId ";
+        if (!app.isLoaded()) {
+            throw new MissingProperty("app is not loaded");
         }
-        if (electionTypeId < 0) {
-            error += "missing electionType ";
-        }
-        if (!"".equals(error)) {
-            throw new MissingProperty(error);
-        } else {
-            insert();
-        }
+        insert();
     }
 
     private void insert() throws SQLException {
-        String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId) VALUES (?,?,?,?)";
-        PreparedStatement insert = con.prepareStatement(sql);
-        insert.setInt(1,appId);
-        insert.setInt(2,offerId);
-        insert.setString(3,benefit);
-        insert.setInt(4,electionTypeId);
-        insert.executeUpdate();
-        ResultSet rs = insert.getGeneratedKeys();
-        if (rs.next()) {
-            this.coverageId = rs.getInt(1);
+        Connection con = null;
+        try {
+            con = Utils.getConnection();
+            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId) VALUES (?,?,?,?)";
+            PreparedStatement insert = con.prepareStatement(sql);
+            insert.setInt(1, app.getAppId());
+            insert.setInt(2, offer.getOfferId());
+            insert.setString(3, benefit);
+            insert.setInt(4, electionTypeId);
+            insert.executeUpdate();
+            ResultSet rs = insert.getGeneratedKeys();
+            if (rs.next()) {
+                this.coverageId = rs.getInt(1);
+            }
+            insert.close();
+            rs.close();
+        } finally {
+            if (con != null) con.close();
         }
     }
 
-    public static int getElectionTypeId(String name, Connection con) throws SQLException, NoValue {
+    public static int getElectionTypeId(String name) throws SQLException, NoValue {
+        Connection con = null;
         int out = -1;
-        if ("".equals(name) || "Declined".equals(name)) {
-            name = "declined";
-        } else if (name.equals("opt-out")) {
-            // do nothing
-        } else {
-            name = "enrolled";
-        }
-        String sql = "SELECT electionTypeId FROM FE.ElectionTypes WHERE name = ?";
-        PreparedStatement select = con.prepareStatement(sql);
-        select.setString(1,name);
-        ResultSet rs = select.executeQuery();
-        if (rs.next()) {
-            out = rs.getInt("electionTypeId");
-        } else {
-            throw new NoValue();
+        try {
+            if ("".equals(name) || "Declined".equals(name)) {
+                name = "declined";
+            } else if (name.equals("opt-out")) {
+                // do nothing
+            } else {
+                name = "enrolled";
+            }
+            String sql = "SELECT electionTypeId FROM FE.ElectionTypes WHERE name = ?";
+            PreparedStatement select = con.prepareStatement(sql);
+            select.setString(1, name);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) {
+                out = rs.getInt("electionTypeId");
+            } else {
+                throw new NoValue();
+            }
+            select.close();
+            rs.close();
+        } finally {
+            if (con != null) con.close();
         }
         return out;
+    }
+
+    public boolean isLoaded() {
+        return coverageId > -1 ? true : false;
     }
 }

@@ -1,5 +1,7 @@
 package com.solidify.dao;
 
+import com.solidify.exceptions.MissingProperty;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -8,25 +10,34 @@ import java.sql.SQLException;
  * Created by jrobins on 2/13/15.
  */
 public class ClassOffer {
-    private int classId;
-    private int offerId;
-    private Connection con;
+    private Cls cls;
+    private Offer offer;
 
-    public ClassOffer(int classId, int offerId, Connection con) {
-        this.classId = classId;
-        this.offerId = offerId;
-        this.con = con;
+    public ClassOffer(Cls cls, Offer offer) {
+        this.cls = cls;
+        this.offer = offer;
     }
 
-    public void save() throws SQLException {
+    public void save() throws SQLException, MissingProperty {
+        if (!cls.isLoaded()) {
+            throw new MissingProperty("cls is not loaded");
+        }
+        if (!offer.isLoaded()) {
+            throw new MissingProperty("offer is not loaded");
+        }
         insert();
     }
 
     private void insert() throws SQLException {
-        String sql = "INSERT INTO FE.ClassOffers (classId, offerId) VALUES (?,?)";
-        PreparedStatement insert = con.prepareStatement(sql);
-        insert.setInt(1,classId);
-        insert.setInt(2,offerId);
-        insert.executeUpdate();
+        Connection con = null;
+        try {
+            String sql = "INSERT INTO FE.ClassOffers (classId, offerId) VALUES (?,?)";
+            PreparedStatement insert = con.prepareStatement(sql);
+            insert.setInt(1, cls.getClassId());
+            insert.setInt(2, offer.getOfferId());
+            insert.executeUpdate();
+        } finally {
+            if (con != null) con.close();
+        }
     }
 }

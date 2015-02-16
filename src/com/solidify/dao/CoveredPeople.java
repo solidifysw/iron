@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 
 import java.sql.Connection;
@@ -10,39 +11,36 @@ import java.sql.SQLException;
  * Created by jrobins on 2/10/15.
  */
 public class CoveredPeople {
-    private int coverageId;
-    private int personId;
-    private Connection con;
+    private Coverage coverage;
+    private Person coveredPerson;
 
-    public CoveredPeople(int coverageId, int personId, Connection con) {
-        this.coverageId = coverageId;
-        this.personId = personId;
-        this.con = con;
+    public CoveredPeople(Coverage coverage, Person coveredPerson) {
+        this.coverage = coverage;
+        this.coveredPerson = coveredPerson;
     }
 
     public void save() throws SQLException, MissingProperty {
-        String error = "";
-        if (coverageId < 0) {
-            error += "missing coverageId ";
+        if (!coverage.isLoaded()) {
+            throw new MissingProperty("coverage is not loaded");
         }
-        if (personId < 0) {
-            error += "missing personId ";
+        if (!coveredPerson.isLoaded()) {
+            throw new MissingProperty("coveredPerson is not loaded");
         }
-        if (con == null) {
-            error += "missing connection object ";
-        }
-        if (!"".equals(error)) {
-            throw new MissingProperty(error);
-        } else {
-            insert();
-        }
+        insert();
     }
 
     private void insert() throws SQLException {
-        String sql = "INSERT INTO FE.CoveredPeople (coverageId,personId) VALUES (?,?)";
-        PreparedStatement insert = con.prepareStatement(sql);
-        insert.setInt(1,coverageId);
-        insert.setInt(2,personId);
-        insert.executeUpdate();
+        Connection con = null;
+        try {
+            con = Utils.getConnection();
+            String sql = "INSERT INTO FE.CoveredPeople (coverageId,personId) VALUES (?,?)";
+            PreparedStatement insert = con.prepareStatement(sql);
+            insert.setInt(1, coverage.getCoverageId());
+            insert.setInt(2, coveredPerson.getPersonId());
+            insert.executeUpdate();
+            insert.close();
+        } finally {
+            if (con != null) con.close();
+        }
     }
 }

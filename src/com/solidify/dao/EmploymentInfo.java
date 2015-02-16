@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 
 import java.sql.Connection;
@@ -8,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 
 /**
@@ -15,7 +17,7 @@ import java.util.LinkedHashSet;
  */
 public class EmploymentInfo {
     private int employmentInfoId;
-    private int personId;
+    private Person person;
     private String dateOfHire;
     private String employerClass;
     private String occupation;
@@ -29,35 +31,62 @@ public class EmploymentInfo {
     private float annualSalary;
     private Date start;
     private Date end;
-    private Connection con;
-    private LinkedHashSet<String> fields;
 
-    public EmploymentInfo(int personId, int employmentInfoId) {
-        fields = new LinkedHashSet();
-        this.personId = personId;
+    public EmploymentInfo(int employmentInfoId, Person person, String dateOfHire, String employerClass, String occupation, String employeeId, String locationCode, String locationDescription,
+                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary, Date start, Date end) {
         this.employmentInfoId = employmentInfoId;
-        if (personId > -1) {
-            fields.add("personId");
-        }
-        if (employmentInfoId > -1) {
-            fields.add("employmentInfoId");
-        }
+        this.person = person;
+        this.dateOfHire = dateOfHire;
+        this.employerClass = employerClass;
+        this.occupation = occupation;
+        this.employeeId = employeeId;
+        this.locationCode = locationCode;
+        this.locationDescription = locationDescription;
+        this.active = active;
+        this.department = department;
+        this.hoursPerWeek = hoursPerWeek;
+        this.deductionsPerYear = deductionsPerYear;
+        this.annualSalary = annualSalary;
+        this.start = start;
+        this.end = end;
     }
 
-    public EmploymentInfo(int personId) {
-        this(personId,-1);
+    public EmploymentInfo(Person person, String dateOfHire, String employerClass, String occupation, String employeeId, String locationCode, String locationDescription,
+                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary, Date start, Date end) {
+        this(-1, person,dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,active,department,hoursPerWeek,deductionsPerYear,
+                annualSalary,start,end);
+    }
+
+    public EmploymentInfo(Person person) {
+        this(-1,person,null,null,null,null,null,null,1,null,0,0,0f,null,null);
     }
 
     public void save() throws SQLException, MissingProperty {
+        if (!person.isLoaded()) {
+            throw new MissingProperty("person is not loaded");
+        }
         insert();
     }
 
     private void insert() throws SQLException {
-        if (fields.size() == 0) {
-            return;
-        }
+        HashSet<String> fields = new HashSet<String>();
+        fields.add("personId");
+        if (dateOfHire != null) fields.add("dateOfHire");
+        if (employerClass != null) fields.add("employerClass");
+        if (occupation != null) fields.add("occupation");
+        if (employeeId != null) fields.add("employeeId");
+        if (locationCode != null) fields.add("locationCode");
+        if (locationDescription != null) fields.add("locationDescription");
+        fields.add("active");
+        if (department != null) fields.add("department");
+        if (hoursPerWeek > 0) fields.add("hoursPerWeek");
+        if (deductionsPerYear > 0) fields.add("deductionsPerYear");
+        if (annualSalary > 0f) fields.add("annualSalary");
+        if (start != null) fields.add("start");
+        if (end != null) fields.add("end");
 
         String sql = "INSERT INTO FE.EmploymentInfo (";
+
         int cnt = 0;
         for (String field : fields) {
             sql += field;
@@ -75,235 +104,111 @@ public class EmploymentInfo {
         }
         sql += ")";
         System.out.println(sql);
-        PreparedStatement insert = con.prepareStatement(sql);
-        int idx = 1;
-        for (String field : fields) {
-            if (field.equals("personId")) {
-                insert.setInt(idx,personId);
-            } else if (field.equals("active")) {
-                insert.setInt(idx,active);
-            } else if (field.equals("hoursPerWeek")) {
-                insert.setInt(idx,hoursPerWeek);
-            } else if (field.equals("deductionsPerYear")) {
-                insert.setInt(idx,deductionsPerYear);
-            } else if (field.equals("dateOfHire")) {
-                insert.setString(idx,dateOfHire);
-            } else if (field.equals("employerClass")) {
-                insert.setString(idx,employerClass);
-            } else if (field.equals("occupation")) {
-                insert.setString(idx,occupation);
-            } else if (field.equals("employeeId")) {
-                insert.setString(idx,employeeId);
-            } else if (field.equals("locationCode")) {
-                insert.setString(idx,locationCode);
-            } else if (field.equals("locationDescription")) {
-                insert.setString(idx,locationDescription);
-            } else if (field.equals("department")) {
-                insert.setString(idx,department);
-            } else if (field.equals("annualSalary")) {
-                insert.setFloat(idx,annualSalary);
+        Connection con = null;
+        try {
+            con = Utils.getConnection();
+            PreparedStatement insert = con.prepareStatement(sql);
+            int idx = 1;
+            for (String field : fields) {
+                if (field.equals("personId")) {
+                    insert.setInt(idx, person.getPersonId());
+                } else if (field.equals("active")) {
+                    insert.setInt(idx, active);
+                } else if (field.equals("hoursPerWeek")) {
+                    insert.setInt(idx, hoursPerWeek);
+                } else if (field.equals("deductionsPerYear")) {
+                    insert.setInt(idx, deductionsPerYear);
+                } else if (field.equals("dateOfHire")) {
+                    insert.setString(idx, dateOfHire);
+                } else if (field.equals("employerClass")) {
+                    insert.setString(idx, employerClass);
+                } else if (field.equals("occupation")) {
+                    insert.setString(idx, occupation);
+                } else if (field.equals("employeeId")) {
+                    insert.setString(idx, employeeId);
+                } else if (field.equals("locationCode")) {
+                    insert.setString(idx, locationCode);
+                } else if (field.equals("locationDescription")) {
+                    insert.setString(idx, locationDescription);
+                } else if (field.equals("department")) {
+                    insert.setString(idx, department);
+                } else if (field.equals("annualSalary")) {
+                    insert.setFloat(idx, annualSalary);
+                }
+                idx++;
             }
-            idx++;
-        }
-        insert.executeUpdate();
-        ResultSet rs = insert.getGeneratedKeys();
-        if (rs.next()) {
-            employmentInfoId = rs.getInt(1);
+            insert.executeUpdate();
+            ResultSet rs = insert.getGeneratedKeys();
+            if (rs.next()) {
+                employmentInfoId = rs.getInt(1);
+            }
+            insert.close();
+            rs.close();
+        } finally {
+            if (con != null) con.close();
         }
     }
 
     public void setDateOfHire(String dateOfHire) {
-        if (fields.contains("dateOfHire")) {
-            fields.remove("dateOfHire");
-        }
+        this.dateOfHire = !"".equals(dateOfHire) ? dateOfHire : null;
 
-        if (dateOfHire != null && !dateOfHire.equals("")) {
-            this.dateOfHire = dateOfHire;
-            fields.add("dateOfHire");
-        }
     }
 
     public void setEmployerClass(String employerClass) {
-        if (fields.contains("employerClass")) {
-            fields.remove("employerClass");
-        }
-        if (employerClass != null && !employerClass.equals("")) {
-            this.employerClass = employerClass;
-            fields.add("employerClass");
-        }
+        this.employerClass = !"".equals(employerClass) ? employerClass : null;
+
     }
 
     public void setOccupation(String occupation) {
-        if (fields.contains("occupation")) {
-            fields.remove("occupation");
-        }
-        if (occupation != null && !occupation.equals("")) {
-            this.occupation = occupation;
-            fields.add("occupation");
-        }
+        this.occupation = !"".equals(occupation) ? occupation : null;
     }
 
     public void setEmployeeId(String employeeId) {
-        if (fields.contains("employeeId")) {
-            fields.remove("employeeId");
-        }
-        if (employeeId != null && !employeeId.equals("")) {
-            this.employeeId = employeeId;
-            fields.add("employeeId");
-        }
+        this.employeeId = !"".equals(employeeId) ? employeeId : null;
     }
 
     public void setLocationCode(String locationCode) {
-        if (fields.contains("locationCode")) {
-            fields.remove("locationCode");
-        }
-        if (locationCode != null && !locationCode.equals("")) {
-            this.locationCode = locationCode;
-            fields.add("locationCode");
-        }
+        this.locationCode = !"".equals(locationCode) ? locationCode : null;
     }
 
     public void setLocationDescription(String locationDescription) {
-        if (fields.contains("LocationDescription")) {
-            fields.remove("locationDescription");
-        }
-        if (locationDescription != null && !locationDescription.equals("")) {
-            this.locationDescription = locationDescription;
-            fields.add("locationDescription");
-        }
+        this.locationDescription = !"".equals(locationDescription) ? locationDescription : null;
     }
 
     public void setStatus(String status) {
-        if (fields.contains("active")) {
-            fields.remove("active");
-        }
         this.active = status != null && status.equals("ACTIVE") ? 1 : 0;
-        fields.add("active");
     }
 
     public void setDepartment(String department) {
-        if (fields.contains("department")) {
-            fields.remove("department");
-        }
-        if (department != null && !department.equals("")) {
-            this.department = department;
-            fields.add("department");
-        }
+        this.department = !"".equals(department) ? department : null;
     }
 
     public void setHoursPerWeek(int hoursPerWeek) {
-        if (fields.contains("hoursPerWeek")) {
-            fields.remove("hoursPerWeek");
-        }
         this.hoursPerWeek = hoursPerWeek;
-        if (this.hoursPerWeek > -1) {
-            fields.add("hoursPerWeek");
-        }
     }
 
     public void setDeductionsPerYear(int deductionsPerYear) {
-        if (fields.contains("deductionsPerYear")) {
-            fields.remove("deductionsPerYear");
-        }
         this.deductionsPerYear = deductionsPerYear;
-        if (this.deductionsPerYear > 0) {
-            fields.add("deductionsPerYear");
-        }
     }
 
     public void setAnnualSalary(String salary) {
-        if (fields.contains("annualSalary")) {
-            fields.remove("annualSalary");
-        }
-        if (salary == null) {
-            return;
-        }
-        DecimalFormat df = new DecimalFormat("#,###,###.00");
-        try {
-            this.annualSalary = df.parse(salary).floatValue();
-        } catch (Exception e) {
+        if (salary == null || "".equals(salary)) {
             this.annualSalary = 0f;
+        } else {
+            DecimalFormat df = new DecimalFormat("#,###,###.00");
+            try {
+                this.annualSalary = df.parse(salary).floatValue();
+            } catch (Exception e) {
+                this.annualSalary = 0f;
+            }
         }
-        fields.add("annualSalary");
     }
 
     public void setStart(Date start) {
-        if (fields.contains("start")) {
-            fields.remove("start");
-        }
         this.start = start;
-        fields.add("start");
     }
 
     public void setEnd(Date end) {
-        if (fields.contains("end")) {
-            fields.remove("end");
-        }
         this.end = end;
-        fields.add("end");
-    }
-
-    public void setDatabaseConnection(Connection con) {
-        this.con = con;
-    }
-
-    public int getEmploymentInfoId() {
-        return employmentInfoId;
-    }
-
-    public int getPersonId() {
-        return personId;
-    }
-
-    public String getDateOfHire() {
-        return dateOfHire;
-    }
-
-    public String getEmployerClass() {
-        return employerClass;
-    }
-
-    public String getOccupation() {
-        return occupation;
-    }
-
-    public String getEmployeeId() {
-        return employeeId;
-    }
-
-    public String getLocationCode() {
-        return locationCode;
-    }
-
-    public String getLocationDescription() {
-        return locationDescription;
-    }
-
-    public int getActive() {
-        return active;
-    }
-
-    public String getDepartment() {
-        return department;
-    }
-
-    public int getHoursPerWeek() {
-        return hoursPerWeek;
-    }
-
-    public int getDeductionsPerYear() {
-        return deductionsPerYear;
-    }
-
-    public float getAnnualSalary() {
-        return annualSalary;
-    }
-
-    public Date getStart() {
-        return start;
-    }
-
-    public Date getEnd() {
-        return end;
     }
 }
