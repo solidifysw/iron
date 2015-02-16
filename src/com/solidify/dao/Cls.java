@@ -70,9 +70,9 @@ public class Cls {
         if (!pkg.isLoaded()) {
             throw new MissingProperty("pkg is not loaded");
         }
-        if (name == null || "".equals(name)) {
-            throw new MissingProperty("no class name");
-        }
+        //if (name == null || "".equals(name)) {
+            //throw new MissingProperty("no class name");
+        //}
         if (field == null || "".equals(field)) {
             throw new MissingProperty("no field specified for class rule");
         }

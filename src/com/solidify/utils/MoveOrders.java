@@ -46,10 +46,12 @@ public class MoveOrders extends HttpServlet{
                 String groupUUID = sincGroup.getString("id");
                 String groupName = sincGroup.getString("name");
                 String alias = sincGroup.getString("alias");
+                String status = sincGroup.getString("status");
+                int active = status != null && "ACTIVE".equals(status) ? 1 : 0;
                 JSONObject emp = sincGroup.getJSONObject("employer");
 
                 // Add the group to FE.groups if it doesn't exist
-                Group group = new Group(groupName, alias);
+                Group group = new Group(groupName, alias, active);
                 Address address = new Address("Main", emp.getString("address1"), emp.getString("address2"), emp.getString("city"), emp.getString("state"), emp.getString("zip"));
                 group.addAddress(address);
                 group.save();
@@ -75,7 +77,7 @@ public class MoveOrders extends HttpServlet{
 
                     HashSet<Cls> savedClasses = new HashSet<Cls>();
                     if (classes.size() > 0) for (JSONObject cl : classes) {
-                        Cls saveClass = new Cls(group, savePkg, "", "employerClass", "=", cl.getString("name"));
+                        Cls saveClass = new Cls(group, savePkg, cl.getString("description"), "employerClass", "=", cl.getString("name"));
                         saveClass.save();
                         saveClass.setSourceData(cl);  // put the source json data in this object to locate the product configs later
                         savedClasses.add(saveClass);

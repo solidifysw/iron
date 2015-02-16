@@ -57,6 +57,7 @@ public class Pkg {
     private void insert() throws SQLException {
         Connection con = null;
         try {
+            con = Utils.getConnection();
             String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState) VALUES (?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());

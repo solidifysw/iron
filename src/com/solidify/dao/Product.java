@@ -73,6 +73,7 @@ public class Product {
         try {
             String sql = "SELECT FE.Products.productId, FE.Products.displayName, FE.Products.carrierId, FE.Carriers.name AS carrierName FROM FE.Products, FE.Carriers " +
                     "WHERE FE.Products.carrierId = FE.Carriers.carrierId AND FE.Carriers.active = 1 AND FE.Products.solidifyId = ?";
+            con = Utils.getConnection();
             PreparedStatement select = con.prepareStatement(sql);
             select.setString(1,solidifyId);
             ResultSet rs = select.executeQuery();

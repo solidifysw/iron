@@ -16,18 +16,20 @@ public class Group {
     private int groupId;
     private String name;
     private String alias;
+    private int active;
     private ArrayList<Address> addresses;
     //private ArrayList<Phone> phoneNumbers;
     //private Person mainContact;
 
-    public Group(String name, String alias) {
-        this(-1,name,alias);
+    public Group(String name, String alias, int active) {
+        this(-1,name,alias,active);
     }
 
-    public Group(int groupId, String name, String alias) {
+    public Group(int groupId, String name, String alias, int active) {
         this.groupId = groupId;
         this.name = name;
         this.alias = alias;
+        this.active = active;
         this.addresses = new ArrayList<Address>();
     }
 
@@ -83,11 +85,12 @@ public class Group {
         Connection con = null;
         try {
             con = Utils.getConnection();
-            String sql = "INSERT INTO FE.Groups (name,alias) VALUES (?,?)";
+            String sql = "INSERT INTO FE.Groups (name,alias,active) VALUES (?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setString(1,name);
             insert.setString(2,alias);
-            insert.executeQuery();
+            insert.setInt(3,active);
+            insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) groupId = rs.getInt(1);
             insert.close();
