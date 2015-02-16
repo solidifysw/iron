@@ -123,21 +123,6 @@ public class MoveOrders extends HttpServlet{
 
                     Address addr = new Address("home",app.getString("address1"),app.getString("address2"),app.getString("city"),app.getString("state"),app.getString("zip"));
                     ee.addAddress(addr);
-                    /*
-                    EmploymentInfo ei = new EmploymentInfo(ee);
-                    ei.setAnnualSalary(app.getString("annualSalary"));
-                    ei.setDateOfHire(app.getString("dateOfHire"));
-                    ei.setDeductionsPerYear(app.getInt("deductionsPerYear"));
-                    ei.setDepartment(app.getString("department"));
-                    ei.setEmployeeId(app.getString("employeeId"));
-                    ei.setEmployerClass(app.getString("class"));
-                    ei.setHoursPerWeek(app.getInt("hoursPerWeek"));
-                    ei.setLocationCode(app.getString("locationCode"));
-                    ei.setLocationDescription(app.getString("locationDescription"));
-                    ei.setOccupation(app.getString("occupation"));
-                    ei.setStatus(app.getString("status"));
-                    ee.setEmploymentInfo(ei);
-                    */
                     ee.save();
 
                     App a = new App(group, app.getString("orderId"), 2);
