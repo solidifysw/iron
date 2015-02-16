@@ -17,10 +17,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by jrobins on 2/5/15.
@@ -36,6 +33,8 @@ public class MoveOrders extends HttpServlet{
         String sql = null;
         ResultSet rs = null;
         HashMap<String,Offer> offers = new HashMap<String,Offer>(); // productConfigUUID, offerId
+        Calendar cal = Calendar.getInstance();
+        Date saveDate = cal.getTime();
 
         try {
             // get the list of groups from sinc and loop through them
@@ -119,7 +118,7 @@ public class MoveOrders extends HttpServlet{
                     HashMap<String, Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
                     Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfHire"),app.getString("class"),
                             app.getString("occupation"),app.getString("employeeId"),app.getString("locationCode"),app.getString("locationDescription"),app.getString("status"),
-                            app.getString("department"),app.getInt("hoursPerWeek"),app.getInt("deductionsPerYear"),app.getString("annualSalary"),null,null);
+                            app.getString("department"),app.getInt("hoursPerWeek"),app.getInt("deductionsPerYear"),app.getString("annualSalary"),saveDate);
 
                     Address addr = new Address("home",app.getString("address1"),app.getString("address2"),app.getString("city"),app.getString("state"),app.getString("zip"));
                     ee.addAddress(addr);
@@ -135,7 +134,7 @@ public class MoveOrders extends HttpServlet{
                     JSONArray deps = app.getJSONArray("dependents");
                     for (int i = 0; i < deps.length(); i++) {
                         JSONObject dep = deps.getJSONObject(i);
-                        Dependent d = new Dependent(ee, dep.getString("firstName"), dep.getString("lastName"),dep.getString("ssn"),dep.getString("relationship"));
+                        Dependent d = new Dependent(ee, dep.getString("firstName"), dep.getString("lastName"),dep.getString("ssn"),dep.getString("relationship"),saveDate);
                         d.save();
 
                         dependents.put(dep.getString("id"), d); // queue dependents for writing coverages later
@@ -170,6 +169,7 @@ public class MoveOrders extends HttpServlet{
                         Coverage c = new Coverage(o, a, cov.getString("benefit"), electionTypeId);
                         c.save();
 
+                        // Write the covered people records if elected
                         // VTL
                         if (cov.getString("type").equals("VTL") && cov.getString("subType").equals("ee")) {
                             CoveredPeople cp = new CoveredPeople(c, ee);

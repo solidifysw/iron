@@ -3,6 +3,7 @@ package com.solidify.dao;
 import com.solidify.exceptions.MissingProperty;
 
 import java.sql.SQLException;
+import java.util.Date;
 
 /**
  * Created by jennifermac on 2/15/15.
@@ -11,10 +12,14 @@ public class Dependent extends Person {
     private Person ee;
     private String relationship;
 
-    public Dependent(Person ee, String firstName,String lastName,String ssn,String relationship) {
-        super(firstName,lastName,false,ssn);
+    public Dependent(Person ee, String firstName,String lastName,String ssn, String relationship, Date start, Date end) {
+        super(firstName,lastName,false,ssn,start);
         this.ee = ee;
         this.relationship = relationship;
+    }
+
+    public Dependent(Person ee, String firstName,String lastName,String ssn, String relationship, Date start) {
+        this(ee,firstName,lastName,ssn,relationship,start,null);
     }
 
     public String getRelationship() {

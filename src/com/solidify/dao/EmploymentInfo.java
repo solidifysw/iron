@@ -29,11 +29,11 @@ public class EmploymentInfo {
     private int hoursPerWeek;
     private int deductionsPerYear;
     private float annualSalary;
-    private Date start;
-    private Date end;
+    private Connection con;
+    private boolean manageConnection = true;
 
     public EmploymentInfo(int employmentInfoId, Person person, String dateOfHire, String employerClass, String occupation, String employeeId, String locationCode, String locationDescription,
-                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary, Date start, Date end) {
+                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary) {
         this.employmentInfoId = employmentInfoId;
         this.person = person;
         this.dateOfHire = dateOfHire;
@@ -47,20 +47,23 @@ public class EmploymentInfo {
         this.hoursPerWeek = hoursPerWeek;
         this.deductionsPerYear = deductionsPerYear;
         this.annualSalary = annualSalary;
-        this.start = start;
-        this.end = end;
+        this.con = null;
     }
 
     public EmploymentInfo(Person person, String dateOfHire, String employerClass, String occupation, String employeeId, String locationCode, String locationDescription,
-                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary, Date start, Date end) {
+                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary) {
         this(-1, person,dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,active,department,hoursPerWeek,deductionsPerYear,
-                annualSalary,start,end);
+                annualSalary);
     }
 
     public EmploymentInfo(Person person) {
-        this(-1,person,null,null,null,null,null,null,1,null,0,0,0f,null,null);
+        this(-1,person,null,null,null,null,null,null,1,null,0,0,0f);
     }
 
+    public void setConnection(Connection con) {
+        this.con = con;
+        manageConnection = false;
+    }
     public void save() throws SQLException, MissingProperty {
         if (!person.isLoaded()) {
             throw new MissingProperty("person is not loaded");
@@ -82,8 +85,6 @@ public class EmploymentInfo {
         if (hoursPerWeek > 0) fields.add("hoursPerWeek");
         if (deductionsPerYear > 0) fields.add("deductionsPerYear");
         if (annualSalary > 0f) fields.add("annualSalary");
-        if (start != null) fields.add("start");
-        if (end != null) fields.add("end");
 
         String sql = "INSERT INTO FE.EmploymentInfo (";
 
@@ -104,9 +105,10 @@ public class EmploymentInfo {
         }
         sql += ")";
         System.out.println(sql);
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (con == null) {
+                con = Utils.getConnection();
+            }
             PreparedStatement insert = con.prepareStatement(sql);
             int idx = 1;
             for (String field : fields) {
@@ -145,7 +147,7 @@ public class EmploymentInfo {
             insert.close();
             rs.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 
@@ -204,11 +206,55 @@ public class EmploymentInfo {
         }
     }
 
-    public void setStart(Date start) {
-        this.start = start;
+    public int getEmploymentInfoId() {
+        return employmentInfoId;
     }
 
-    public void setEnd(Date end) {
-        this.end = end;
+    public Person getPerson() {
+        return person;
+    }
+
+    public String getDateOfHire() {
+        return dateOfHire;
+    }
+
+    public String getEmployerClass() {
+        return employerClass;
+    }
+
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public String getLocationCode() {
+        return locationCode;
+    }
+
+    public String getLocationDescription() {
+        return locationDescription;
+    }
+
+    public int getActive() {
+        return active;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public int getHoursPerWeek() {
+        return hoursPerWeek;
+    }
+
+    public int getDeductionsPerYear() {
+        return deductionsPerYear;
+    }
+
+    public float getAnnualSalary() {
+        return annualSalary;
     }
 }
