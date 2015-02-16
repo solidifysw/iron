@@ -55,6 +55,8 @@ public class App {
             if (rs.next()) {
                 this.appId = rs.getInt(1);
             }
+            insert.close();
+            rs.close();
         } finally {
             if (con != null) con.close();
         }

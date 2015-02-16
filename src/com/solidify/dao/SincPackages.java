@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 import org.json.JSONObject;
 
@@ -28,6 +29,7 @@ public class SincPackages {
     private void load() throws SQLException {
         Connection con = null;
         try {
+            con = Utils.getConnection();
             String sql = "SELECT id, data FROM sinc.packages WHERE deleted = 0 AND groupId = ?";
             PreparedStatement packs = con.prepareStatement(sql);
             packs.setString(1,groupUUID);

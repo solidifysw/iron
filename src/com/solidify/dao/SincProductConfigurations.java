@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 import org.json.JSONObject;
 
@@ -32,6 +33,7 @@ public class SincProductConfigurations {
     private void load() throws SQLException {
         Connection con = null;
         try {
+            con = Utils.getConnection();
             String sql = "SELECT id, data FROM sinc.productConfigurations WHERE packageId = ? AND groupId = ? AND deleted = 0";
             PreparedStatement pack = con.prepareStatement(sql);
             pack.setString(1, packageUUID);

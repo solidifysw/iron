@@ -45,27 +45,33 @@ public class Pkg {
         if (!group.isLoaded()) {
             throw new MissingProperty("Missing groupId");
         }
+        if (enrollStart == null) {
+            throw new MissingProperty("Missing enrollStart date");
+        }
+        if (enrollEnd == null) {
+            throw new MissingProperty("Missing enrollEnd date");
+        }
         insert();
     }
 
     private void insert() throws SQLException {
         Connection con = null;
         try {
-            if (group.isLoaded() && enrollStart != null && enrollEnd != null) {
-                String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState) VALUES (?,?,?,?)";
-                PreparedStatement insert = con.prepareStatement(sql);
-                insert.setInt(1, group.getGroupId());
-                java.sql.Date start = new java.sql.Date(enrollStart.getTime());
-                java.sql.Date end = new java.sql.Date(enrollEnd.getTime());
-                insert.setDate(2, start);
-                insert.setDate(3, end);
-                insert.setString(4, situsState);
-                insert.executeUpdate();
-                ResultSet rs = insert.getGeneratedKeys();
-                if (rs.next()) {
-                    this.packageId = rs.getInt(1);
-                }
+            String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState) VALUES (?,?,?,?)";
+            PreparedStatement insert = con.prepareStatement(sql);
+            insert.setInt(1, group.getGroupId());
+            java.sql.Date start = new java.sql.Date(enrollStart.getTime());
+            java.sql.Date end = new java.sql.Date(enrollEnd.getTime());
+            insert.setDate(2, start);
+            insert.setDate(3, end);
+            insert.setString(4, situsState);
+            insert.executeUpdate();
+            ResultSet rs = insert.getGeneratedKeys();
+            if (rs.next()) {
+                this.packageId = rs.getInt(1);
             }
+            insert.close();
+            rs.close();
         } finally {
             if (con != null) con.close();
         }

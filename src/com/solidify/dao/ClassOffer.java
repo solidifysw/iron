@@ -1,5 +1,6 @@
 package com.solidify.dao;
 
+import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 
 import java.sql.Connection;
@@ -31,11 +32,13 @@ public class ClassOffer {
     private void insert() throws SQLException {
         Connection con = null;
         try {
+            con = Utils.getConnection();
             String sql = "INSERT INTO FE.ClassOffers (classId, offerId) VALUES (?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, cls.getClassId());
             insert.setInt(2, offer.getOfferId());
             insert.executeUpdate();
+            insert.close();
         } finally {
             if (con != null) con.close();
         }

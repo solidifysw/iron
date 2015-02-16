@@ -74,6 +74,7 @@ public class Coverage {
             } else {
                 name = "enrolled";
             }
+            con = Utils.getConnection();
             String sql = "SELECT electionTypeId FROM FE.ElectionTypes WHERE name = ?";
             PreparedStatement select = con.prepareStatement(sql);
             select.setString(1, name);
