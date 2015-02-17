@@ -18,22 +18,17 @@ import static org.junit.Assert.*;
 /**
  * Created by jennifermac on 2/16/15.
  */
-public class TestEeInsert {
+public class TestEeInsert extends BaseTest{
 
     @Test
     public void testEeInsert() {
-        Connection con = null;
-        Properties connectionProps = new Properties();
-        connectionProps.put("user","root");
-        connectionProps.put("password", "letmein1");
         try {
-            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/FE", connectionProps);
             Calendar start = Calendar.getInstance();
             start.set(Calendar.DAY_OF_MONTH,10);
             start.set(Calendar.MONTH, 2);
             start.set(Calendar.YEAR, 2015);
             int personId = -1;
-            Employee employee = new Employee("Testy","Tester","123-12-1234","2008-03-10","2","The Man","man1","1","West","ACTIVE","Sales",40,26,"150000.00",start.getTime());
+            Employee employee = new Employee("Testy","Tester","123-12-1234","1962-03-10","MALE","2008-03-10","2","The Man","man1","1","West","ACTIVE","Sales",40,26,"150000.00",start.getTime());
             employee.setConnection(con);
             employee.save();
             assertTrue(employee.getPersonId()> -1);
@@ -41,6 +36,12 @@ public class TestEeInsert {
             e.printStackTrace();
         } catch (MissingProperty missingProperty) {
             missingProperty.printStackTrace();
+        } finally {
+            if (con != null) try {
+                con.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
 
     }

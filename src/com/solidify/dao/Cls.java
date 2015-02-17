@@ -47,8 +47,8 @@ public class Cls {
 
     public boolean hasProductConfig(String productConfigUUID) {
         boolean out = false;
-        if (sourceData.has("productConfigs")) {
-            JSONArray prodConfigs = sourceData.getJSONArray("productConfigs");
+        if (sourceData.has("productConfigurations")) {
+            JSONArray prodConfigs = sourceData.getJSONArray("productConfigurations");
             for (int i=0; i<prodConfigs.length(); i++) {
                 if (productConfigUUID.equals(prodConfigs.getString(i))) {
                     out = true;

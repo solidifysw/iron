@@ -15,6 +15,8 @@ delete from FE.PhoneNumbers;
 delete from FE.EmailAddresses;
 delete from FE.People;
 delete from FE.Apps;
+delete from FE.ClassOffers;
 delete from FE.Offers;
+delete from FE.Classes;
 delete from FE.Packages;
 delete from FE.Groups;

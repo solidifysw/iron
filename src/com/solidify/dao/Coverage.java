@@ -18,6 +18,7 @@ public class Coverage {
     private Offer offer;
     private String benefit;
     private int electionTypeId;
+    private boolean manageConnection = true;
 
     public Coverage(Offer offer, App app, String benefit, int electionTypeId) {
         this.offer = offer;
@@ -63,21 +64,30 @@ public class Coverage {
         }
     }
 
-    public static int getElectionTypeId(String name) throws SQLException, NoValue {
-        Connection con = null;
+    public static int getElectionTypeId(String benefitString) throws SQLException, NoValue {
+        return getElectionTypeId(benefitString, null);
+    }
+
+    public static int getElectionTypeId(String benefitString, Connection con) throws SQLException, NoValue {
         int out = -1;
+        boolean manageConnection = true;
+        if (con != null) {
+            manageConnection = false;
+        }
         try {
-            if ("".equals(name) || "Declined".equals(name)) {
-                name = "declined";
-            } else if (name.equals("opt-out")) {
+            if ("".equals(benefitString) || "Decline".equals(benefitString)) {
+                benefitString = "declined";
+            } else if (benefitString.equals("opt-out")) {
                 // do nothing
             } else {
-                name = "enrolled";
+                benefitString = "enrolled";
             }
-            con = Utils.getConnection();
+            if (manageConnection) {
+                con = Utils.getConnection();
+            }
             String sql = "SELECT electionTypeId FROM FE.ElectionTypes WHERE name = ?";
             PreparedStatement select = con.prepareStatement(sql);
-            select.setString(1, name);
+            select.setString(1, benefitString);
             ResultSet rs = select.executeQuery();
             if (rs.next()) {
                 out = rs.getInt("electionTypeId");
@@ -87,7 +97,7 @@ public class Coverage {
             select.close();
             rs.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
         return out;
     }

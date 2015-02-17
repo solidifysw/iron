@@ -13,10 +13,10 @@ import java.util.Date;
 public class Employee extends Person {
     private EmploymentInfo employmentInfo;
 
-    public Employee(String firstName, String lastName, String ssn, String dateOfHire, String employerClass, String occupation, String employeeId,
+    public Employee(String firstName, String lastName, String ssn, String dateOfBirth, String gender, String dateOfHire, String employerClass, String occupation, String employeeId,
                     String locationCode, String locationDescription, String status, String department, int hoursPerWeek, int deductionsPerYear,
                     String annualSalary, Date start, Date end) {
-        super(firstName,lastName,true,ssn,start, end);
+        super(firstName,lastName,true,ssn,dateOfBirth,gender,start, end);
 
         float salary = 0f;
         DecimalFormat df = new DecimalFormat("#,###,###.00");
@@ -28,10 +28,10 @@ public class Employee extends Person {
                 "ACTIVE".equals(status)?1:0,department,hoursPerWeek,deductionsPerYear,salary);
     }
 
-    public Employee(String firstName, String lastName, String ssn, String dateOfHire, String employerClass, String occupation, String employeeId,
+    public Employee(String firstName, String lastName, String ssn, String dateOfBirth, String gender, String dateOfHire, String employerClass, String occupation, String employeeId,
                     String locationCode, String locationDescription, String status, String department, int hoursPerWeek, int deductionsPerYear,
                     String annualSalary, Date start) {
-        this(firstName,lastName,ssn,dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,status,department,hoursPerWeek,deductionsPerYear,annualSalary,start,null);
+        this(firstName,lastName,ssn,dateOfBirth, gender, dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,status,department,hoursPerWeek,deductionsPerYear,annualSalary,start,null);
     }
 
     public void save() throws SQLException, MissingProperty {

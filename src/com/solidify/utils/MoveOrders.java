@@ -23,7 +23,7 @@ import java.util.*;
  * Created by jrobins on 2/5/15.
  */
 @WebServlet("/utils/moveOrders")
-public class MoveOrders extends HttpServlet{
+public class MoveOrders extends HttpServlet {
     private static final Logger log = LogManager.getLogger();
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -116,7 +116,7 @@ public class MoveOrders extends HttpServlet{
 
                 for (JSONObject app : apps) {
                     HashMap<String, Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
-                    Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfHire"),app.getString("class"),
+                    Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfBirth"), app.getString("gender"),app.getString("dateOfHire"),app.getString("class"),
                             app.getString("occupation"),app.getString("employeeId"),app.getString("locationCode"),app.getString("locationDescription"),app.getString("status"),
                             app.getString("department"),app.getInt("hoursPerWeek"),app.getInt("deductionsPerYear"),app.getString("annualSalary"),saveDate);
 
@@ -134,13 +134,19 @@ public class MoveOrders extends HttpServlet{
                     JSONArray deps = app.getJSONArray("dependents");
                     for (int i = 0; i < deps.length(); i++) {
                         JSONObject dep = deps.getJSONObject(i);
-                        Dependent d = new Dependent(ee, dep.getString("firstName"), dep.getString("lastName"),dep.getString("ssn"),dep.getString("relationship"),saveDate);
+                        Dependent d = new Dependent(ee, dep.getString("firstName"), dep.getString("lastName"),dep.getString("ssn"),"".equals(dep.getString("dateOfBirth"))?"":dep.getString("dateOfBirth"),dep.getString("gender"),dep.getString("relationship"),saveDate);
                         d.save();
 
                         dependents.put(dep.getString("id"), d); // queue dependents for writing coverages later
                     }
 
                     // write coverages
+                    HashSet<String> tieredProducts = new HashSet<String>();
+                    tieredProducts.add("MEDICAL"); tieredProducts.add("ACCIDENT"); tieredProducts.add("GAP"); tieredProducts.add("VISION"); tieredProducts.add("DENTAL"); tieredProducts.add("CANCER");
+
+                    HashSet<String> lifeProducts = new HashSet<String>();
+                    lifeProducts.add("VTL"); lifeProducts.add("BASIC_LIFE");
+
                     JSONArray covs = app.getJSONArray("covs");
                     for (int i = 0; i < covs.length(); i++) {
                         JSONObject cov = covs.getJSONObject(i);
@@ -171,10 +177,10 @@ public class MoveOrders extends HttpServlet{
 
                         // Write the covered people records if elected
                         // VTL
-                        if (cov.getString("type").equals("VTL") && cov.getString("subType").equals("ee")) {
+                        if (lifeProducts.contains(cov.getString("type")) && cov.getString("subType").equals("ee")) {
                             CoveredPeople cp = new CoveredPeople(c, ee);
                             cp.save();
-                        } else if ((cov.getString("type")).equals("VTL") && !(cov.getString("subType")).equals("ee")) {
+                        } else if (lifeProducts.contains(cov.getString("type")) && !(cov.getString("subType")).equals("ee")) {
                             JSONArray covered = cov.getJSONArray("coveredDependents");
                             for (int j = 0; j < covered.length(); j++) {
                                 String depId = covered.getString(j);
@@ -185,20 +191,25 @@ public class MoveOrders extends HttpServlet{
                                 CoveredPeople cp = new CoveredPeople(c, dep);
                                 cp.save();
                             }
-                        } else if ((cov.getString("type")).equals("MEDICAL") && electionTypeId == 1) {
+                        } else if (tieredProducts.contains(cov.getString("type"))) {
                             // Medical enrolled
                             CoveredPeople cp = new CoveredPeople(c, ee);
                             cp.save();
-                            JSONArray covered = cov.getJSONArray("coveredDependents");
-                            for (int j = 0; j < covered.length(); j++) {
-                                String depId = covered.getString(j);
-                                if (!dependents.containsKey(depId)) {
-                                    throw new Exception("Can't find the covered dependent: " + depId);
+                            if (electionTypeId == 1) {
+                                JSONArray covered = cov.getJSONArray("coveredDependents");
+                                for (int j = 0; j < covered.length(); j++) {
+                                    String depId = covered.getString(j);
+                                    if (!dependents.containsKey(depId)) {
+                                        throw new Exception("Can't find the covered dependent: " + depId);
+                                    }
+                                    Person dep = dependents.get(depId);
+                                    cp = new CoveredPeople(c, dep);
+                                    cp.save();
                                 }
-                                Person dep = dependents.get(depId);
-                                cp = new CoveredPeople(c, dep);
-                                cp.save();
                             }
+                        } else {
+                            CoveredPeople cp = new CoveredPeople(c,ee);
+                            cp.save();
                         }
                     }
                 }

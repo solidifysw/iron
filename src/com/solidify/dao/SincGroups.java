@@ -15,17 +15,29 @@ import java.util.HashSet;
  */
 public class SincGroups {
     private HashSet<JSONObject> groups;
+    private Connection con;
+    private boolean manageConnection = true;
 
     public SincGroups() throws SQLException {
+        this(null);
+    }
+
+    public SincGroups(Connection con) throws SQLException {
         this.groups = new HashSet<JSONObject>();
+        this.con = con;
+        if (this.con != null) {
+            this.manageConnection = false;
+        }
         load();
     }
 
     private void load() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
-            String sql = "SELECT id, data AS json FROM sinc.groups WHERE deleted = 0 AND id = '1a83f17c-34e3-45c0-b323-d6174400ab05'"; // for testing
+            if (manageConnection) {
+                con = Utils.getConnection();
+            }
+            String sql = "SELECT id, data AS json FROM sinc.groups WHERE deleted = 0 AND id = 'fefc6deb-9c08-47c3-b132-e93a1c9e9554'"; // for testing
+            //String sql = "SELECT id, data AS json FROM sinc.groups WHERE deleted = 0 AND id = '1a83f17c-34e3-45c0-b323-d6174400ab05'"; // for testing
             //String sql = "SELECT id, data AS json FROM sinc.groups WHERE deleted = 0";
             PreparedStatement select = con.prepareStatement(sql);
             ResultSet rs = select.executeQuery();
@@ -37,7 +49,7 @@ public class SincGroups {
             rs.close();
             select.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

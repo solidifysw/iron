@@ -12,14 +12,14 @@ public class Dependent extends Person {
     private Person ee;
     private String relationship;
 
-    public Dependent(Person ee, String firstName,String lastName,String ssn, String relationship, Date start, Date end) {
-        super(firstName,lastName,false,ssn,start);
+    public Dependent(Person ee, String firstName,String lastName,String ssn, String dateOfBirth, String gender, String relationship, Date start, Date end) {
+        super(firstName,lastName,false,ssn,dateOfBirth, gender, start);
         this.ee = ee;
         this.relationship = relationship;
     }
 
-    public Dependent(Person ee, String firstName,String lastName,String ssn, String relationship, Date start) {
-        this(ee,firstName,lastName,ssn,relationship,start,null);
+    public Dependent(Person ee, String firstName,String lastName,String ssn, String dateOfBirth, String gender, String relationship, Date start) {
+        this(ee,firstName,lastName,ssn,dateOfBirth,gender,relationship,start,null);
     }
 
     public String getRelationship() {

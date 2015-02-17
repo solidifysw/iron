@@ -16,20 +16,31 @@ import java.util.HashMap;
 public class SincPackages {
     private HashMap<String,JSONObject> packages;
     private String groupUUID;
+    private Connection con;
+    private boolean manageConnection = true;
 
     public SincPackages(String groupUUID) throws SQLException, MissingProperty {
+        this(groupUUID, null);
+    }
+
+    public SincPackages(String groupUUID, Connection con) throws SQLException, MissingProperty {
         this.groupUUID = groupUUID;
+        this.con = con;
         this.packages = new HashMap<String,JSONObject>();
         if (groupUUID == null || "".equals(groupUUID)) {
             throw new MissingProperty("groupUUID is missing.");
+        }
+        if (this.con != null) {
+            manageConnection = false;
         }
         load();
     }
 
     private void load() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) {
+                con = Utils.getConnection();
+            }
             String sql = "SELECT id, data FROM sinc.packages WHERE deleted = 0 AND groupId = ?";
             PreparedStatement packs = con.prepareStatement(sql);
             packs.setString(1,groupUUID);
@@ -45,11 +56,11 @@ public class SincPackages {
             rs.close();
             packs.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 
-    public HashMap getPackages() {
+    public HashMap<String, JSONObject> getPackages() {
         return packages;
     }
 }

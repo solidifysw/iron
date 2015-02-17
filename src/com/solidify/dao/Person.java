@@ -19,30 +19,34 @@ public class Person {
     private String lastName;
     private boolean isEmployee;
     private String ssn;
+    private String gender;
+    private String dateOfBirth;
     private HashSet<Address> addresses;
     private Date start;
     private Date end;
     private Connection con;
     private boolean manageConnection = true;
 
-    public Person(int personId, String firstName, String lastName, boolean isEmployee, String ssn, Date start, Date end) {
+    public Person(int personId, String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Date end) {
         this.personId = personId;
         this.firstName = firstName;
         this.lastName = lastName;
         this.isEmployee = isEmployee;
         this.ssn = ssn;
+        this.dateOfBirth = dateOfBirth;
+        this.gender = gender;
         this.addresses = new HashSet<Address>();
         this.con = null;
         this.start = start;
         this.end = end;
     }
 
-    public Person(String firstName, String lastName, boolean isEmployee, String ssn, Date start) {
-        this(-1, firstName, lastName, isEmployee, ssn,start,null);
+    public Person(String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start) {
+        this(-1, firstName, lastName, isEmployee, ssn,dateOfBirth,gender,start,null);
     }
 
-    public Person(String firstName, String lastName, boolean isEmployee, String ssn, Date start, Date end) {
-        this(-1, firstName, lastName, isEmployee, ssn,start,end);
+    public Person(String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Date end) {
+        this(-1, firstName, lastName, isEmployee, ssn,dateOfBirth,gender,start,end);
     }
 
     public void save() throws SQLException, MissingProperty {
@@ -65,17 +69,19 @@ public class Person {
             if (con == null) {
                 con = Utils.getConnection();
             }
-            String sql = "INSERT INTO FE.people (firstName,lastName,isEmployee,ssn,start,end) VALUES (?,?,?,?,?,?)";
+            String sql = "INSERT INTO FE.people (firstName, lastName, isEmployee, ssn, dateOfBirth, gender, start, end) VALUES (?,?,?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setString(1, firstName);
             insert.setString(2, lastName);
             insert.setBoolean(3, isEmployee);
             insert.setString(4, ssn);
-            insert.setDate(5, new java.sql.Date(start.getTime()));
+            insert.setString(5, dateOfBirth);
+            insert.setString(6, gender);
+            insert.setDate(7, new java.sql.Date(start.getTime()));
             if (end == null) {
-                insert.setDate(6, null);
+                insert.setDate(8, null);
             } else {
-                insert.setDate(6, new java.sql.Date(end.getTime()));
+                insert.setDate(8, new java.sql.Date(end.getTime()));
             }
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
