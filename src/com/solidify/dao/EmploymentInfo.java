@@ -104,7 +104,7 @@ public class EmploymentInfo {
             }
         }
         sql += ")";
-        System.out.println(sql);
+
         try {
             if (con == null) {
                 con = Utils.getConnection();

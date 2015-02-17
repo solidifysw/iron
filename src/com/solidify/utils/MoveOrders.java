@@ -14,8 +14,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
 
@@ -115,6 +113,7 @@ public class MoveOrders extends HttpServlet {
                 List<JSONObject> apps = Utils.getLatestOrdersForGroup(groupUUID);
 
                 for (JSONObject app : apps) {
+                    //log.info(app.toString());
                     HashMap<String, Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
                     Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfBirth"), app.getString("gender"),app.getString("dateOfHire"),app.getString("class"),
                             app.getString("occupation"),app.getString("employeeId"),app.getString("locationCode"),app.getString("locationDescription"),app.getString("status"),
@@ -126,9 +125,14 @@ public class MoveOrders extends HttpServlet {
 
                     App a = new App(group, app.getString("orderId"), 2);
                     a.save();
-                    int appId = a.getAppId();
                     AppsToEmployees ate = new AppsToEmployees(a, ee);
                     ate.save();
+
+                    if (app.has("questionAnswers")) {
+                        JSONObject answers = app.getJSONObject("questionAnswers");
+                        QuestionResponses qr = new QuestionResponses(a, answers.toString());
+                        qr.save();
+                    }
 
                     // write dependents
                     JSONArray deps = app.getJSONArray("dependents");
@@ -145,7 +149,7 @@ public class MoveOrders extends HttpServlet {
                     tieredProducts.add("MEDICAL"); tieredProducts.add("ACCIDENT"); tieredProducts.add("GAP"); tieredProducts.add("VISION"); tieredProducts.add("DENTAL"); tieredProducts.add("CANCER");
 
                     HashSet<String> lifeProducts = new HashSet<String>();
-                    lifeProducts.add("VTL"); lifeProducts.add("BASIC_LIFE");
+                    lifeProducts.add("VTL"); lifeProducts.add("BASIC_LIFE"); lifeProducts.add("CI");
 
                     JSONArray covs = app.getJSONArray("covs");
                     for (int i = 0; i < covs.length(); i++) {
@@ -172,7 +176,7 @@ public class MoveOrders extends HttpServlet {
                             log.error("Couldn't find an electionTypeId for election: "+election);
                             break;
                         }
-                        Coverage c = new Coverage(o, a, cov.getString("benefit"), electionTypeId);
+                        Coverage c = new Coverage(o, a, cov, electionTypeId, Coverage.NOT_PENDED);
                         c.save();
 
                         // Write the covered people records if elected
@@ -216,6 +220,8 @@ public class MoveOrders extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            log.info("MoveOrders finished");
         }
     }
 }

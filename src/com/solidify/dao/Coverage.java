@@ -3,6 +3,7 @@ package com.solidify.dao;
 import com.solidify.admin.reports.Utils;
 import com.solidify.exceptions.MissingProperty;
 import com.solidify.exceptions.NoValue;
+import org.json.JSONObject;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,14 +19,44 @@ public class Coverage {
     private Offer offer;
     private String benefit;
     private int electionTypeId;
+    private int pending;
+    private String declineReason;
     private boolean manageConnection = true;
+    public static final int PENDED = 1;
+    public static final int NOT_PENDED = 0;
+    public static final String NA = "";
 
-    public Coverage(Offer offer, App app, String benefit, int electionTypeId) {
+    public Coverage(Offer offer, App app, String benefit, int electionTypeId, int pending) {
         this.offer = offer;
         this.app = app;
         this.benefit = benefit;
         this.electionTypeId = electionTypeId;
+        this.pending = pending;
+        this.declineReason = null;
         this.coverageId = -1;
+    }
+
+    /**
+     * Use this method when moving from sinc database.  Converts benefit in the cancer order object to LEVEL_ONE or LEVEL_TWO from TBD
+     * @param offer
+     * @param app
+     * @param json
+     * @param electionTypeId
+     */
+    public Coverage(Offer offer, App app, JSONObject json, int electionTypeId, int pending) {
+        this(offer,app,json.getString("benefit"),electionTypeId, pending);
+        if (json.getString("type").equals("CANCER")) {
+            this.benefit = json.getString("benefitLevel");
+        }
+        if (electionTypeId == 2 && json.has("declineReason")) {
+            this.declineReason = json.getString("declineReason");
+        } else if (electionTypeId == 2) {
+            this.electionTypeId = 3;
+        }
+    }
+
+    public void setDeclineReason(String reason) {
+        this.declineReason = reason;
     }
 
     public int getCoverageId() {
@@ -46,12 +77,14 @@ public class Coverage {
         Connection con = null;
         try {
             con = Utils.getConnection();
-            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId) VALUES (?,?,?,?)";
+            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId, pending, declineReason) VALUES (?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, app.getAppId());
             insert.setInt(2, offer.getOfferId());
             insert.setString(3, benefit);
             insert.setInt(4, electionTypeId);
+            insert.setInt(5,pending);
+            insert.setString(6, declineReason);
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {

@@ -1,7 +1,7 @@
 package com.solidify.admin.reports;
 
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
+import java.util.*;
 import java.io.IOException;
 import java.sql.Blob;
 import java.sql.Connection;
@@ -10,12 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.TreeMap;
 
 import javax.naming.InitialContext;
 import javax.sql.DataSource;
@@ -740,7 +734,7 @@ public class Utils {
 		
 		HashSet<String> skip = new HashSet<String>();
 		//skip.add("declineReasons"); 
-		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("questionAnswers"); skip.add("enrollment"); skip.add("imported"); skip.add("current"); skip.add("usedDefinedContributions");
+		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("enrollment"); skip.add("imported"); skip.add("current"); skip.add("usedDefinedContributions");
 		skip.add("lifeChangeTypes"); skip.add("member");
 
 		JsonToken current = null;
@@ -780,7 +774,9 @@ public class Utils {
 					} else if ("isBatchable".equals(field)) {
 						jp.nextToken();
 						order.put("isBatchable",jp.getValueAsBoolean());
-					}
+					} else if ("questionAnswers".equals(field)) {
+                        getQuestionAnswers(order,jp);
+                    }
 				}
 			}
 		//} catch (Exception e) {
@@ -805,6 +801,38 @@ public class Utils {
         findClass(order);
 		return order;
 	}
+
+    private static void getQuestionAnswers(JSONObject order, JsonParser jp)  throws JsonParseException, IOException {
+        // questionAnswers: { weight-ee: {id:xxx,questionText:xxx...},weight-sp:...}
+        JSONObject answers = new JSONObject();
+        JsonToken current = null;
+        String field = null;
+        String objectName = null;
+        if ((current = jp.nextToken()) == JsonToken.START_OBJECT) {
+            while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
+                if (current == JsonToken.FIELD_NAME) {
+                    objectName = jp.getCurrentName();
+                    JSONObject jo = new JSONObject();
+                    while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
+                        if (current == JsonToken.FIELD_NAME) {
+                            field = jp.getCurrentName();
+                            jp.nextToken();
+                            try {
+                                jo.put(field, jp.getValueAsString());
+                            } catch (Exception e) {
+                                jo.put(field, jp.getValueAsInt());
+                            }
+                        }
+                    }
+                    answers.put(objectName,jo);
+                }
+            }
+        }
+        Set set = answers.keySet();
+        if (!set.isEmpty()) {
+            order.put("questionAnswers", answers);
+        }
+    }
 	
 	/**
 	 * Retrieves the declineReasons from the order data blob
@@ -849,6 +877,7 @@ public class Utils {
 		skips.add("premiums"); skips.add("carrierElectionData");
 		HashSet<String> saves = new HashSet<String>();
 		saves.add("productId"); saves.add("planName"); saves.add("startDate"); saves.add("benefit"); saves.add("endDate"); saves.add("type"); saves.add("subType"); saves.add("deduction"); saves.add("totalYearly"); saves.add("electionTier"); saves.add("splitId");
+        saves.add("benefitLevel");
 
 		while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
 			if (current == JsonToken.FIELD_NAME) {

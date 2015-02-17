@@ -81,6 +81,10 @@ public class Address {
         return zip;
     }
 
+    public void setAddressId(int addressId) {
+        this.addressId = addressId;
+    }
+
     public void save() throws SQLException, MissingProperty {
         if (!isValid()) {
             throw new MissingProperty("No values to save");
@@ -110,7 +114,7 @@ public class Address {
             rs.close();
 
             if (associationType == GROUP) {
-                sql = "INSERT INTO FE.GroupAddresses (groupId,addressId) VALUES (?,?)";
+                sql = "INSERT INTO FE.AddressesToGroups (groupId,addressId) VALUES (?,?)";
             } else if (associationType == PERSON) {
                 sql = "INSERT INTO FE.AddressesToPeople (personId,addressId) VALUES (?,?)";
             }
@@ -125,7 +129,7 @@ public class Address {
     }
 
     public boolean isValid() {
-        if (associationType != GROUP || associationType != PERSON) {
+        if (associationType != GROUP && associationType != PERSON) {
             return false;
         }
         if (associationId < 0) {
