@@ -6,7 +6,7 @@
   To change this template use File | Settings | File Templates.
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.solidify.dao.Signature" %>
+<%@ page import="com.solidify.dao.SignatureOld" %>
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.json.JSONArray" %>
 <%@ page import="com.aspose.pdf.drawing.Graph" %>

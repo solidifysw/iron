@@ -18,13 +18,28 @@ public class App {
     private Group group;
     private String sincOrderId;
     private Date dateSaved;
+    private String enroller;
     private int appSourceId;
 
-    public App(Group group, String sincOrderId, int appSourceId) {
-        this.appId = -1;
+    public App(int appId, Group group, String sincOrderId, Date dateSaved, String enroller, int appSourceId) {
+        this.appId = appId;
         this.group = group;
         this.sincOrderId = sincOrderId;
+        this.dateSaved = dateSaved;
+        this.enroller = enroller;
         this.appSourceId = appSourceId;
+    }
+
+    public App(Group group, String sincOrderId, Date dateSaved, String enroller, int appSourceId) {
+        this(-1,group,sincOrderId,dateSaved,enroller,appSourceId);
+    }
+
+    public App(int appId, Group group, Date dateSaved, String enroller, int appSourceId) {
+        this(appId,group,null,dateSaved,enroller,appSourceId);
+    }
+
+    public App(Group group, Date dateSaved, String enroller, int appSourceId) {
+        this(-1,group,null,dateSaved,enroller,appSourceId);
     }
 
     public int getAppId() {
@@ -45,11 +60,17 @@ public class App {
         Connection con = null;
         try {
             con = Utils.getConnection();
-            String sql = "INSERT INTO FE.apps (groupId,orderId,appSourceId) VALUES (?,?,?)";
+            String sql = "INSERT INTO FE.apps (groupId,orderId,appSourceId,enroller,dateSaved) VALUES (?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
             insert.setString(2, sincOrderId);
             insert.setInt(3, appSourceId);
+            insert.setString(4,enroller);
+            if (dateSaved != null) {
+                insert.setDate(5, new java.sql.Date(dateSaved.getTime()));
+            } else {
+                insert.setDate(5,null);
+            }
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {

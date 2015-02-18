@@ -25,6 +25,12 @@ public class SincPackagesTest extends BaseTest {
             e.printStackTrace();
         } catch (MissingProperty missingProperty) {
             missingProperty.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

@@ -3,14 +3,6 @@ package com.solidify.pdf;
 //import com.aspose.pdf.*;
 //import com.aspose.pdf.drawing.Graph;
 //import com.aspose.pdf.drawing.Line;
-import com.solidify.dao.*;
-import com.solidify.dao.Signature;
-import org.json.JSONObject;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * Created by jrobins on 1/12/15.

@@ -19,8 +19,14 @@ public class Pkg {
     private Date enrollStart;
     private Date enrollEnd;
     private String situsState;
+    private int deductionsPerYear;
+    private String login1;
+    private String login1Label;
+    private String login2;
+    private String login2Label;
+    private String password;
 
-    public Pkg(Group group, String enrollStartStr, String enrollEndStr, String situsState) {
+    public Pkg(Group group, String enrollStartStr, String enrollEndStr, String situsState, int deductionsPerYear, String login1, String login1Label, String login2, String login2Label, String password) {
         this.packageId = -1;
         this.group = group;
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -35,6 +41,12 @@ public class Pkg {
         this.enrollStart = start;
         this.enrollEnd = end;
         this.situsState = situsState;
+        this.deductionsPerYear = deductionsPerYear;
+        this.login1 = login1;
+        this.login1Label = login1Label;
+        this.login2 = login2;
+        this.login2Label = login2Label;
+        this.password = password;
     }
 
     public int getPackageId() {
@@ -58,7 +70,7 @@ public class Pkg {
         Connection con = null;
         try {
             con = Utils.getConnection();
-            String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState) VALUES (?,?,?,?)";
+            String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState,deductionsPerYear,login1,login1Label,login2,login2Label,password) VALUES (?,?,?,?,?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
             java.sql.Date start = new java.sql.Date(enrollStart.getTime());
@@ -66,6 +78,12 @@ public class Pkg {
             insert.setDate(2, start);
             insert.setDate(3, end);
             insert.setString(4, situsState);
+            insert.setInt(5,deductionsPerYear);
+            insert.setString(6,login1);
+            insert.setString(7,login1Label);
+            insert.setString(8,login2);
+            insert.setString(9,login2Label);
+            insert.setString(10,password);
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {

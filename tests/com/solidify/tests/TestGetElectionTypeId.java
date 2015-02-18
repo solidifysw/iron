@@ -22,6 +22,12 @@ public class TestGetElectionTypeId extends BaseTest {
             e.printStackTrace();
         } catch (NoValue noValue) {
             noValue.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

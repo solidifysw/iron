@@ -53,6 +53,15 @@ public class SincGroups {
         }
     }
 
+    public static JSONObject getLoginScheme(JSONObject group) {
+        if (group.has("loginScheme")) {
+            JSONObject loginScheme = group.getJSONObject("loginScheme");
+            return loginScheme;
+        } else {
+            return new JSONObject();
+        }
+    }
+
     public HashSet<JSONObject> getGroups() {
         return groups;
     }

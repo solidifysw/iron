@@ -37,7 +37,7 @@ public class TestEeInsert extends BaseTest{
         } catch (MissingProperty missingProperty) {
             missingProperty.printStackTrace();
         } finally {
-            if (con != null) try {
+            try {
                 con.close();
             } catch (SQLException e) {
                 e.printStackTrace();

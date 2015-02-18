@@ -21,12 +21,14 @@ public class Coverage {
     private int electionTypeId;
     private int pending;
     private String declineReason;
+    private float annualPremium;
+    private float modalPremium;
     private boolean manageConnection = true;
     public static final int PENDED = 1;
     public static final int NOT_PENDED = 0;
     public static final String NA = "";
 
-    public Coverage(Offer offer, App app, String benefit, int electionTypeId, int pending) {
+    public Coverage(Offer offer, App app, String benefit, int electionTypeId, int pending, float annualPremium, float modalPremium) {
         this.offer = offer;
         this.app = app;
         this.benefit = benefit;
@@ -34,6 +36,8 @@ public class Coverage {
         this.pending = pending;
         this.declineReason = null;
         this.coverageId = -1;
+        this.annualPremium = annualPremium;
+        this.modalPremium = modalPremium;
     }
 
     /**
@@ -43,8 +47,8 @@ public class Coverage {
      * @param json
      * @param electionTypeId
      */
-    public Coverage(Offer offer, App app, JSONObject json, int electionTypeId, int pending) {
-        this(offer,app,json.getString("benefit"),electionTypeId, pending);
+    public Coverage(Offer offer, App app, JSONObject json, int electionTypeId, int pending, float annualPremium, float modalPremium) {
+        this(offer,app,json.getString("benefit"),electionTypeId, pending,annualPremium,modalPremium);
         if (json.getString("type").equals("CANCER")) {
             this.benefit = json.getString("benefitLevel");
         }
@@ -77,7 +81,7 @@ public class Coverage {
         Connection con = null;
         try {
             con = Utils.getConnection();
-            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId, pending, declineReason) VALUES (?,?,?,?,?,?)";
+            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId, pending, declineReason, annualPremium, modalPremium) VALUES (?,?,?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, app.getAppId());
             insert.setInt(2, offer.getOfferId());
@@ -85,6 +89,8 @@ public class Coverage {
             insert.setInt(4, electionTypeId);
             insert.setInt(5,pending);
             insert.setString(6, declineReason);
+            insert.setFloat(7,annualPremium);
+            insert.setFloat(8,modalPremium);
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {

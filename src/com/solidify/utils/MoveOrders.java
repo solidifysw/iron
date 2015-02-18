@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.ResultSet;
+import java.text.DecimalFormat;
 import java.util.*;
 
 /**
@@ -64,7 +65,26 @@ public class MoveOrders extends HttpServlet {
                     // write a Package record to get a packageId
                     JSONObject pkg = pkgs.get(pkgUUID);
                     JSONObject openEnrollment = pkg.getJSONObject("openEnrollment");
-                    Pkg savePkg = new Pkg(group, openEnrollment.getString("startDate"), openEnrollment.getString("endDate"), pkg.getString("situsState"));
+                    JSONObject loginScheme = SincGroups.getLoginScheme(sincGroup);
+
+                    String login1 = null, login1Label = null, login2 = null, login2Label = null;
+                    if (loginScheme.has("first")) {
+                        JSONObject first = loginScheme.getJSONObject("first");
+                        login1 = first.getString("type");
+                        login1Label = first.getString("displayText");
+                        JSONObject second = loginScheme.getJSONObject("second");
+                        login2 = second.getString("type");
+                        login2Label = second.getString("displayText");
+                    }
+                    int deductionsPerYear = 0;
+                    if (sincGroup.has("deductionsPerYear")) {
+                        deductionsPerYear = sincGroup.getInt("deductionsPerYear");
+                    }
+                    String password = null;
+                    if (sincGroup.has("password")) {
+                        password = sincGroup.getString("password");
+                    }
+                    Pkg savePkg = new Pkg(group, openEnrollment.getString("startDate"), openEnrollment.getString("endDate"), pkg.getString("situsState"),deductionsPerYear,login1,login1Label,login2,login2Label,password);
                     savePkg.save();
                     //packageId = savePkg.getPackageId();
 
@@ -112,7 +132,7 @@ public class MoveOrders extends HttpServlet {
 
                 List<JSONObject> apps = Utils.getLatestOrdersForGroup(groupUUID);
 
-                for (JSONObject app : apps) {
+                for (JSONObject app : apps) {  // apps from sinc
                     //log.info(app.toString());
                     HashMap<String, Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
                     Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfBirth"), app.getString("gender"),app.getString("dateOfHire"),app.getString("class"),
@@ -123,8 +143,31 @@ public class MoveOrders extends HttpServlet {
                     ee.addAddress(addr);
                     ee.save();
 
-                    App a = new App(group, app.getString("orderId"), 2);
+                    // Write the app
+                    Date dateSaved = null;
+                    if (app.has("dateSaved")) {
+                        dateSaved = new Date(app.getLong("dateSaved"));
+                    }
+                    String enroller = null;
+                    if (app.has("enroller")) {
+                        enroller = app.getString("enroller");
+                    }
+                    String orderId = null;
+                    if (app.has("orderId")) {
+                        orderId = app.getString("orderId");
+                    }
+                    int appSourceId = 2;
+                    if (enroller == null) {
+                        appSourceId = 1;
+                    }
+                    App a = new App(group, orderId, dateSaved, enroller, appSourceId);
                     a.save();
+
+                    // Write the app signature
+                    SincSignature ss = new SincSignature(orderId);
+                    Signature sig = new Signature(a,ss.getSignatureJson());
+                    sig.save();
+
                     AppsToEmployees ate = new AppsToEmployees(a, ee);
                     ate.save();
 
@@ -176,7 +219,19 @@ public class MoveOrders extends HttpServlet {
                             log.error("Couldn't find an electionTypeId for election: "+election);
                             break;
                         }
-                        Coverage c = new Coverage(o, a, cov, electionTypeId, Coverage.NOT_PENDED);
+                        DecimalFormat df = new DecimalFormat("#,###,###.00");
+                        float annualPremium = 0f, modalPremium = 0f;
+                        if (cov.has("totalYearly")) {
+                            try {
+                                annualPremium = df.parse(cov.getString("totalYearly")).floatValue();
+                            } catch (Exception e) {}
+                        }
+                        if (cov.has("deduction")) {
+                            try {
+                                modalPremium = df.parse(cov.getString("deduction")).floatValue();
+                            } catch (Exception e) {}
+                        }
+                        Coverage c = new Coverage(o, a, cov, electionTypeId, Coverage.NOT_PENDED, annualPremium, modalPremium);
                         c.save();
 
                         // Write the covered people records if elected

@@ -741,62 +741,55 @@ public class Utils {
 		HashMap<String,String> declineReasons = null;
 		String field = null;
 		// start of json {
-		//try {
-			current = jp.nextToken();
-			if (current != JsonToken.START_OBJECT) {
-				log.info("error parsing");
-				return null;
-			}
-			while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-				if (current == JsonToken.FIELD_NAME) {
-					field = jp.getCurrentName();
-					//if ("member".equals(field)) {
-						//buildMember(order,jp);
-					//} else
-                    if ("data".equals(field)) {
-						current = jp.nextToken();
-						buildCovs(order,jp);
-					} else if ("dateSaved".equals(field)) {
-						//log.info("found dateSaved");
-						jp.nextToken();
-						Long dateSaved = jp.getValueAsLong();
-						order.put("dateSaved", dateSaved);
-						SimpleDateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-						long dateSavedL = dateSaved.longValue();
-						Date dt = new Date(dateSavedL);
-						String date = df.format(dt);
-						order.put("date",date); 
-					} else if (skip.contains(field)) {
-						jp.nextToken();
-						jp.skipChildren();
-					} else if ("declineReasons".equals(field)) {
-						declineReasons = getDeclineReasons(order,jp);
-					} else if ("isBatchable".equals(field)) {
-						jp.nextToken();
-						order.put("isBatchable",jp.getValueAsBoolean());
-					} else if ("questionAnswers".equals(field)) {
-                        getQuestionAnswers(order,jp);
-                    }
-				}
-			}
-		//} catch (Exception e) {
-		//	e.printStackTrace();
-			//log.error(field);
-		//}
+
+        current = jp.nextToken();
+        if (current != JsonToken.START_OBJECT) {
+            log.info("error parsing");
+            return null;
+        }
+        while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
+            if (current == JsonToken.FIELD_NAME) {
+                field = jp.getCurrentName();
+                if ("data".equals(field)) {
+                    current = jp.nextToken();
+                    buildCovs(order,jp);
+                } else if ("dateSaved".equals(field)) {
+                    //log.info("found dateSaved");
+                    jp.nextToken();
+                    Long dateSaved = jp.getValueAsLong();
+                    order.put("dateSaved", dateSaved);
+                    SimpleDateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+                    long dateSavedL = dateSaved.longValue();
+                    Date dt = new Date(dateSavedL);
+                    String date = df.format(dt);
+                    order.put("date",date);
+                } else if (skip.contains(field)) {
+                    jp.nextToken();
+                    jp.skipChildren();
+                } else if ("declineReasons".equals(field)) {
+                    declineReasons = getDeclineReasons(order,jp);
+                } else if ("isBatchable".equals(field)) {
+                    jp.nextToken();
+                    order.put("isBatchable",jp.getValueAsBoolean());
+                } else if ("questionAnswers".equals(field)) {
+                    getQuestionAnswers(order,jp);
+                } else if ("userName".equals(field)) {
+                    jp.nextToken();
+                    order.put("enroller",jp.getValueAsString());
+                }
+            }
+        }
+
 		if (declineReasons != null && !declineReasons.isEmpty()) {
-			//try {
-				JSONArray covs = (JSONArray) order.get("covs");
-				for (int i = 0; i < covs.length(); i++) {
-					JSONObject cov = (JSONObject) covs.get(i);
-                    // log.info(cov.toString());
-					String covUuid = (String) cov.get("splitId");
-					if (declineReasons.containsKey(covUuid)) {
-						cov.put("declineReason", declineReasons.get(covUuid));
-					}
-				}
-			//} catch (Exception e) {
-				//log.error(order.toString());
-			//}
+            JSONArray covs = (JSONArray) order.get("covs");
+            for (int i = 0; i < covs.length(); i++) {
+                JSONObject cov = (JSONObject) covs.get(i);
+                // log.info(cov.toString());
+                String covUuid = (String) cov.get("splitId");
+                if (declineReasons.containsKey(covUuid)) {
+                    cov.put("declineReason", declineReasons.get(covUuid));
+                }
+            }
 		}
         findClass(order);
 		return order;
@@ -871,10 +864,10 @@ public class Utils {
 		String field;
 		JsonToken current = null;
 		JSONObject cov = null;
+        JSONObject premiums = null;
 		JSONArray covs = new JSONArray();
 		HashSet<String> skips = new HashSet<String>();
-		skips.add("emergencyContacts"); skips.add("beneficiaries"); skips.add("signature"); skips.add("listBillAdjustments");
-		skips.add("premiums"); skips.add("carrierElectionData");
+		skips.add("emergencyContacts"); skips.add("beneficiaries"); skips.add("signature"); skips.add("listBillAdjustments"); skips.add("carrierElectionData");
 		HashSet<String> saves = new HashSet<String>();
 		saves.add("productId"); saves.add("planName"); saves.add("startDate"); saves.add("benefit"); saves.add("endDate"); saves.add("type"); saves.add("subType"); saves.add("deduction"); saves.add("totalYearly"); saves.add("electionTier"); saves.add("splitId");
         saves.add("benefitLevel");
@@ -934,8 +927,21 @@ public class Utils {
 						if (current == JsonToken.FIELD_NAME) {
 							field = jp.getCurrentName();
 							if (saves.contains(field)) {
-								current = jp.nextToken();
-								cov.put(field, jp.getValueAsString());
+                                current = jp.nextToken();
+                                cov.put(field, jp.getValueAsString());
+                            } else if ("premiums".equals(field)) {
+                                while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
+                                    premiums = new JSONObject();
+                                    while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
+                                        if (current == JsonToken.FIELD_NAME) {
+                                            field = jp.getCurrentName();
+                                            jp.nextToken();
+                                            String fVal = jp.getValueAsString();
+                                            premiums.put(field, fVal);
+                                        }
+                                    }
+                                    cov.put("premiums",premiums);
+                                }
 							} else if ("beneficiaries".equals(field)) {
                                 JSONArray bens = new JSONArray();
 								while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
