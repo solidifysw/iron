@@ -852,7 +852,45 @@ public class Utils {
 		}
 		return declineReasons;
 	}
-	
+
+    public static void getDependents(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
+        String field;
+        JsonToken current = null;
+        JSONArray deps = new JSONArray();
+        current = jp.nextToken();
+        if (current == JsonToken.START_ARRAY) {
+            while (current != JsonToken.END_ARRAY) {
+                current = jp.nextToken();
+                if (current == JsonToken.START_OBJECT) {
+                    JSONObject dep = new JSONObject();
+                    while (current != JsonToken.END_OBJECT) {
+                        current = jp.nextToken();
+                        if (current == JsonToken.FIELD_NAME) {
+                            field = jp.getCurrentName();
+                            if (field.equals("deleted") && !jp.getValueAsBoolean()) {
+                                dep.put("deleted", false);
+                            } else if (field.equals("deleted")) {
+                                dep.put("deleted", true);
+                            } else {
+                                jp.nextToken();
+                                dep.put(field, jp.getValueAsString());
+                            }
+                        }
+                    }
+                    deps.put(dep);
+                }
+            }
+        }
+        if (order.has("dependents")) {
+            JSONArray dps = order.getJSONArray("dependents");
+            if (dps.length() == 0) {
+                order.put("dependents", deps);
+            }
+        } else {
+            order.put("dependents", deps);
+        }
+    }
+
 	/**
 	 * retrieves the coverage lines from the order data blob.  Builds and array of JSONObjects and adds them to the slimmed down order object as the covs JSONArray
 	 * @param order
@@ -864,7 +902,7 @@ public class Utils {
 		String field;
 		JsonToken current = null;
 		JSONObject cov = null;
-        JSONObject premiums = null;
+        JSONObject premium = null;
 		JSONArray covs = new JSONArray();
 		HashSet<String> skips = new HashSet<String>();
 		skips.add("emergencyContacts"); skips.add("beneficiaries"); skips.add("signature"); skips.add("listBillAdjustments"); skips.add("carrierElectionData");
@@ -921,6 +959,7 @@ public class Utils {
 				}  else {
 					// these are coverages
 					cov = new JSONObject();
+                    JSONArray prems;
 					cov.put("id", field);
 					jp.nextToken(); // open tag uuid : {
 					while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
@@ -930,39 +969,43 @@ public class Utils {
                                 current = jp.nextToken();
                                 cov.put(field, jp.getValueAsString());
                             } else if ("premiums".equals(field)) {
+                                prems = new JSONArray();
                                 while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
-                                    premiums = new JSONObject();
+                                    premium = new JSONObject();
                                     while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
                                         if (current == JsonToken.FIELD_NAME) {
                                             field = jp.getCurrentName();
-                                            jp.nextToken();
+                                            current = jp.nextToken();
                                             String fVal = jp.getValueAsString();
-                                            premiums.put(field, fVal);
+                                            premium.put(field, fVal);
                                         }
                                     }
-                                    cov.put("premiums",premiums);
+                                    prems.put(premium);
+                                }
+                                if (prems.length() > 0) {
+                                    cov.put("premiums",prems);
                                 }
 							} else if ("beneficiaries".equals(field)) {
                                 JSONArray bens = new JSONArray();
 								while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
 									JSONObject ben = new JSONObject();
-									current = jp.nextToken();
-									if (current == JsonToken.END_ARRAY) { // just break if empty array
-										break;
-									}
-									while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-										if (current != JsonToken.START_OBJECT) {
+                                    current = jp.nextToken();
+                                    if (current == JsonToken.END_ARRAY) {
+                                        break;
+                                    }
+									while (current != JsonToken.END_OBJECT) {
+                                        if (current == JsonToken.FIELD_NAME) {
 											field = jp.getCurrentName();
-											jp.nextToken();
-											if (field.equals("percent")) {
+											current = jp.nextToken();
+											if (current.isNumeric()) {
 												ben.put(field, jp.getValueAsInt());
 											} else {
 												ben.put(field, jp.getValueAsString());
 											}
 										}
+                                        current = jp.nextToken();
 									}
 									bens.put(ben);
-
 								}
                                 if (bens.length()>0) {
                                     cov.put("beneficiaries", bens);

@@ -221,16 +221,24 @@ public class MoveOrders extends HttpServlet {
                         }
                         DecimalFormat df = new DecimalFormat("#,###,###.00");
                         float annualPremium = 0f, modalPremium = 0f;
-                        if (cov.has("totalYearly")) {
-                            try {
-                                annualPremium = df.parse(cov.getString("totalYearly")).floatValue();
-                            } catch (Exception e) {}
+                        if (cov.has("premiums")) {
+                            JSONArray premiums = cov.getJSONArray("premiums");
+                            if (premiums.length() > 1) {
+                                log.debug("premiums array is longer than 1");
+                            }
+                            JSONObject prem = premiums.getJSONObject(0);
+                            if (prem.has("totalYearly")) {
+                                try {
+                                    annualPremium = df.parse(prem.getString("totalYearly")).floatValue();
+                                } catch (Exception e) {}
+                            }
+                            if (prem.has("deduction")) {
+                                try {
+                                    modalPremium = df.parse(prem.getString("deduction")).floatValue();
+                                } catch (Exception e) {}
+                            }
                         }
-                        if (cov.has("deduction")) {
-                            try {
-                                modalPremium = df.parse(cov.getString("deduction")).floatValue();
-                            } catch (Exception e) {}
-                        }
+
                         Coverage c = new Coverage(o, a, cov, electionTypeId, Coverage.NOT_PENDED, annualPremium, modalPremium);
                         c.save();
 
