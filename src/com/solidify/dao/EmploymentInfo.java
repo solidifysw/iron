@@ -33,7 +33,7 @@ public class EmploymentInfo {
     private boolean manageConnection = true;
 
     public EmploymentInfo(int employmentInfoId, Person person, String dateOfHire, String employerClass, String occupation, String employeeId, String locationCode, String locationDescription,
-                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary) {
+                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary, Connection con) {
         this.employmentInfoId = employmentInfoId;
         this.person = person;
         this.dateOfHire = dateOfHire;
@@ -47,17 +47,18 @@ public class EmploymentInfo {
         this.hoursPerWeek = hoursPerWeek;
         this.deductionsPerYear = deductionsPerYear;
         this.annualSalary = annualSalary;
-        this.con = null;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     public EmploymentInfo(Person person, String dateOfHire, String employerClass, String occupation, String employeeId, String locationCode, String locationDescription,
-                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary) {
+                          int active, String department, int hoursPerWeek, int deductionsPerYear, float annualSalary, Connection con) {
         this(-1, person,dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,active,department,hoursPerWeek,deductionsPerYear,
-                annualSalary);
+                annualSalary,con);
     }
 
-    public EmploymentInfo(Person person) {
-        this(-1,person,null,null,null,null,null,null,1,null,0,0,0f);
+    public EmploymentInfo(Person person,Connection con) {
+        this(-1,person,null,null,null,null,null,null,1,null,0,0,0f,con);
     }
 
     public void setConnection(Connection con) {
@@ -106,7 +107,7 @@ public class EmploymentInfo {
         sql += ")";
 
         try {
-            if (con == null) {
+            if (manageConnection) {
                 con = Utils.getConnection();
             }
             PreparedStatement insert = con.prepareStatement(sql);

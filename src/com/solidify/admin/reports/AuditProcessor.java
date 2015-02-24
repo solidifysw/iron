@@ -157,7 +157,7 @@ public class AuditProcessor implements Runnable {
 	
 	/**
 	 * Test version that works a single order.
-	 */
+
 	public void run4() {
 		Connection con = null;
 		try {
@@ -208,22 +208,23 @@ public class AuditProcessor implements Runnable {
 				con.close();
 			} catch (Exception e) {}
 		}
-	}
-	
+	} */
+
+	/*
 	public void run6() {
 		Connection con = null;
 		try {
 			con = Utils.getConnection();
 			HashMap<String,String> ids = new HashMap<String,String>();
 			String sql = "SELECT id, name FROM sinc.groups WHERE deleted = 0";
-			/*
-			PreparedStatement grpQ = con.prepareStatement(sql);
-			ResultSet grpIds = grpQ.executeQuery();
-			while(grpIds.next()) {
-				ids.put(grpIds.getString("id"),grpIds.getString("name"));
-			}
-			grpIds.close();
-			*/
+
+			//PreparedStatement grpQ = con.prepareStatement(sql);
+			//ResultSet grpIds = grpQ.executeQuery();
+			//while(grpIds.next()) {
+				//ids.put(grpIds.getString("id"),grpIds.getString("name"));
+			//}
+			//grpIds.close();
+
 			ids.put("2a367e1b-bef2-4fc6-b657-d79da60c2e0d", "Hotelier Linen");
 			sql = "SELECT id FROM sinc.orders WHERE groupId = '2a367e1b-bef2-4fc6-b657-d79da60c2e0d' AND completed = 1 AND deleted = 0";
 			PreparedStatement select = con.prepareStatement(sql);
@@ -263,10 +264,12 @@ public class AuditProcessor implements Runnable {
 			} catch (Exception e) {}
 		}
 	}
-	
+	*/
+
 	/**
 	 * Main code where the full audit process runs for all groups in the system.
 	 */
+    /*
 	public void run8() {
 		Connection con = null;
 		BufferedWriter bw = null;
@@ -279,14 +282,14 @@ public class AuditProcessor implements Runnable {
 			con = Utils.getConnection();
 			HashMap<String,String> ids = new HashMap<String,String>();
 			String sql = "SELECT id, name FROM sinc.groups WHERE deleted = 0";
-			/*
-			PreparedStatement grpQ = con.prepareStatement(sql);
-			ResultSet grpIds = grpQ.executeQuery();
-			while(grpIds.next()) {
-				ids.put(grpIds.getString("id"),grpIds.getString("name"));
-			}
-			grpIds.close();
-			*/
+
+			//PreparedStatement grpQ = con.prepareStatement(sql);
+			//ResultSet grpIds = grpQ.executeQuery();
+			//while(grpIds.next()) {
+				//ids.put(grpIds.getString("id"),grpIds.getString("name"));
+			//}
+			//grpIds.close();
+
 			ids.put("71573da2-1d84-468d-94f4-490b47516602", "Pinebrook Community Answers");
 			//ids.put("140ca2f1-8b55-4bd6-b4f1-4c546371594c", "West Coast Dental Services");
 			//ids.put("2a367e1b-bef2-4fc6-b657-d79da60c2e0d", "Hotelier Linen");
@@ -501,9 +504,9 @@ public class AuditProcessor implements Runnable {
 				bw.close();
 			} catch (Exception e) {}
 		}
+	} */
 
-	}
-	
+    /*
 	public void run5() {
 		Connection con = null;
 		BufferedWriter bw = null;
@@ -597,7 +600,8 @@ public class AuditProcessor implements Runnable {
 		}
 
 	}
-	
+	*/
+
 	/*
 	public static JSONObject buildObject(String groupId, String groupName, String orderId, String memberId, byte[] bdata) throws Exception {
 		

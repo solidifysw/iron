@@ -27,7 +27,7 @@ public class Person {
     private Connection con;
     private boolean manageConnection = true;
 
-    public Person(int personId, String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Date end) {
+    public Person(int personId, String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Date end, Connection con) {
         this.personId = personId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -36,17 +36,18 @@ public class Person {
         this.dateOfBirth = dateOfBirth;
         this.gender = gender;
         this.addresses = new HashSet<Address>();
-        this.con = null;
         this.start = start;
         this.end = end;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
-    public Person(String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start) {
-        this(-1, firstName, lastName, isEmployee, ssn,dateOfBirth,gender,start,null);
+    public Person(String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Connection con) {
+        this(-1, firstName, lastName, isEmployee, ssn,dateOfBirth,gender,start,null,con);
     }
 
-    public Person(String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Date end) {
-        this(-1, firstName, lastName, isEmployee, ssn,dateOfBirth,gender,start,end);
+    public Person(String firstName, String lastName, boolean isEmployee, String ssn, String dateOfBirth, String gender, Date start, Date end, Connection con) {
+        this(-1, firstName, lastName, isEmployee, ssn,dateOfBirth,gender,start,end, con);
     }
 
     public void save() throws SQLException, MissingProperty {
@@ -66,7 +67,7 @@ public class Person {
 
     private void insert() throws SQLException {
         try {
-            if (con == null) {
+            if (manageConnection) {
                 con = Utils.getConnection();
             }
             String sql = "INSERT INTO FE.people (firstName, lastName, isEmployee, ssn, dateOfBirth, gender, start, end) VALUES (?,?,?,?,?,?,?,?)";
@@ -107,11 +108,6 @@ public class Person {
         } finally {
             if (manageConnection && con != null) con.close();
         }
-    }
-
-    public void setConnection (Connection con) {
-        this.con = con;
-        manageConnection = false;
     }
 
     public void addAddress(Address address) {

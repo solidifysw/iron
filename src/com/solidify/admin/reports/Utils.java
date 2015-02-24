@@ -32,16 +32,16 @@ public class Utils {
 	private static final String INACTIVE = "0";
 	private static final String ALL = "ALL";
 	
-	public static TreeMap<String,String> getInactiveGroups() {
-		return getGroupList(INACTIVE);
+	public static TreeMap<String,String> getInactiveGroups(Connection con) {
+		return getGroupList(INACTIVE,con);
 	}
 	
-	public static TreeMap<String,String> getActiveGroups() {
-		return getGroupList(ACTIVE);
+	public static TreeMap<String,String> getActiveGroups(Connection con) {
+		return getGroupList(ACTIVE,con);
 	}
 	
-	public static TreeMap<String,String> getGroupList() {
-		return getGroupList(ALL);
+	public static TreeMap<String,String> getGroupList(Connection con) {
+		return getGroupList(ALL,con);
 	}
 
 	public static int getMemberCount(String groupId) throws SQLException {
@@ -80,14 +80,11 @@ public class Utils {
 	 * @param activeFilter indicates which groups to include, active, inactive or all
 	 * @return
 	 */
-	public static TreeMap<String,String> getGroupList(String activeFilter) {
+	public static TreeMap<String,String> getGroupList(String activeFilter, Connection con) {
 		TreeMap<String,String> groups = new TreeMap<String,String>();
-		Connection con = null;
 		PreparedStatement select = null;
 		ResultSet rs = null;
 		try {
-			con = getConnection();
-			
 			String sql = "SELECT id, name FROM sinc.groups WHERE deleted = 0 ";
 			if (activeFilter.equals(ACTIVE)) {
 				sql += "AND active = 1 ";
@@ -106,9 +103,6 @@ public class Utils {
 			e.printStackTrace();
 		} finally {
 			try {
-				con.close();
-			} catch (Exception e) {}
-			try {
 				select.close();
 			} catch (Exception e) {}
 			try {
@@ -124,31 +118,30 @@ public class Utils {
 	 * @return
 	 * @throws SQLException
 	 */
-	public static String getGroupName(String groupId) throws SQLException {
+    public static String getGroupName(String groupId) throws SQLException {
+        Connection con = null;
+        String out = null;
+        try {
+            con = Utils.getConnection();
+            out = getGroupName(groupId, con);
+        } finally {
+            if (con != null) con.close();
+        }
+        return out;
+    }
+
+	public static String getGroupName(String groupId, Connection con) throws SQLException {
 		String groupName = null;
-		Connection con = null;
 		PreparedStatement select = null;
-		try {
-			con = Utils.getConnection();
-			String sql = "SELECT name FROM sinc.groups WHERE id = ?";
-			select = con.prepareStatement(sql);
-			select.setString(1, groupId);
-			ResultSet rs = select.executeQuery();
-			if (rs.next()) {
-				groupName = rs.getString("name");
-			}
-			rs.close();
-			select.close();
-		} catch (SQLException e) {
-			throw e;
-		} finally {
-			try {
-				select.close();
-			} catch (Exception e) {}
-			try {
-				con.close();
-			} catch (Exception e) {}
-		}
+        String sql = "SELECT name FROM sinc.groups WHERE id = ?";
+        select = con.prepareStatement(sql);
+        select.setString(1, groupId);
+        ResultSet rs = select.executeQuery();
+        if (rs.next()) {
+            groupName = rs.getString("name");
+        }
+        rs.close();
+        select.close();
 		return groupName;
 	}
 	
@@ -214,66 +207,64 @@ public class Utils {
 	 * @param orderId the id of the order to dump
 	 */
 	public static void dumpOrderBlob(String orderId) {
+        Connection con = null;
 		boolean includeSourceBlob = false;
-		dumpOrderBlob(orderId,includeSourceBlob);
+        try {
+            con = getConnection();
+            dumpOrderBlob(orderId, includeSourceBlob, con);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (con != null) try {
+                con.close();
+            } catch (SQLException e) {}
+        }
 	}
+
+    public static void dumpOrderBlob(String orderId, boolean includeSourceBlob, Connection con) throws Exception {
+        byte[] blob = getOrderBlob(orderId, con);
+        String blobStr = null;
+        if (blob != null && includeSourceBlob) {
+            blobStr = new String(blob,"UTF-8");
+            log.info(blobStr);
+        }
+        if (blob != null) {
+            JSONObject slimOrder = buildObject(blob);
+            if (slimOrder != null) {
+                // find the classes
+                JSONObject enrollment = parseEnrollment(blobStr);
+                JSONArray classes = enrollment.getJSONArray("classes");
+                String cls = getClassVal(classes, slimOrder.getString("memberId"), con);
+                if (cls != null) {
+                    slimOrder.put("class",cls);
+                }
+                log.info(slimOrder.toString());
+            }
+        }
+    }
 	
 	/**
 	 * Print's the order data blob in the database to the log
 	 * @param orderId
 	 */
-	public static JSONObject dumpOrderBlob(String orderId, boolean includeSourceBlob) {
-		Connection con = null;
+	public static byte[] getOrderBlob(String orderId, Connection con) throws Exception {
+        byte[] out = null;
+        String memberId = null;
 		PreparedStatement select = null;
 		ResultSet rs = null;
 		JSONObject slimOrder = null;
-		try {
-			con = getConnection();
-			
-			String sql = "SELECT data, memberId, isBatchable FROM sinc.orders WHERE id = ?";
-			select = con.prepareStatement(sql);
-			select .setString(1, orderId);
-			rs = select.executeQuery();
-			if (rs.next()) {
-				String memberId = rs.getString("memberId");
-				boolean isBatchable = rs.getBoolean("isBatchable");
-				if (isBatchable) {
-					log.info("isBatchable column is true");
-				} else {
-					log.info("isBatchable column is false");
-				}
-				Blob b = rs.getBlob("data");
-				byte[] bdata = b.getBytes(1, (int) b.length());
-				if (includeSourceBlob) {
-					String tmp = new String(bdata);
-					log.info(tmp);
-				}
-				try {
-					slimOrder = buildObject("groupId", "groupName", orderId, memberId, bdata);
-					if (slimOrder != null) {
-                        log.info(slimOrder.toString());
-					}
-				} catch (Exception e) {
-					log.info("parse problem skipping this order");
-					log.error("parse",e);
-				}
-			}
-			rs.close();
-			select.close();
-		} catch (Exception e) {
-			log.error("error",e);
-		} finally {
-			try {
-				con.close();
-			} catch (Exception e) {}
-			try {
-				select.close();
-			} catch (Exception e) {}
-			try {
-				rs.close();
-			} catch (Exception e) {}
-		}
-		return slimOrder;
+
+        String sql = "SELECT data, memberId, isBatchable FROM sinc.orders WHERE id = ?";
+        select = con.prepareStatement(sql);
+        select .setString(1, orderId);
+        rs = select.executeQuery();
+        if (rs.next()) {
+            Blob b = rs.getBlob("data");
+            out = b.getBytes(1, (int) b.length());
+        }
+        rs.close();
+        select.close();
+		return out;
 	}
 	
 	/**
@@ -287,32 +278,29 @@ public class Utils {
 		Connection con = null;
 		PreparedStatement select = null;
 		ResultSet rs = null;
-		JSONArray orders = new JSONArray();
+        byte[] bdata = null;
 		try {
 			con = getConnection();
 			
-			String sql = ("SELECT id, data FROM sinc.orders WHERE memberId = ?");	
+			String sql = ("SELECT id, data FROM sinc.orders WHERE memberId = ? AND completed = 1 AND deleted = 0");
 			select = con.prepareStatement(sql);
 			select.setString(1, memberId);
 			rs = select.executeQuery();
 			if (rs.next()) {
 				String orderId = rs.getString("id");
 				Blob b = rs.getBlob("data");
-				byte[] bdata = b.getBytes(1, (int) b.length());
-				try {
-					JSONObject slimOrder = buildObject("groupId", "groupName", orderId, memberId, bdata);
-					orders.put(slimOrder);
-				} catch (Exception e) {
-					log.info("parse problem skipping this order");
-					log.error("parse",e);
-				}
-			}
-			rs.close();
-			select.close();
-			if (orders.length() > 0) {
-				ArrayList<JSONObject> tmp = findLatestOrders(orders);
-				out = tmp.get(0);
-			}
+				bdata = b.getBytes(1, (int) b.length());
+            }
+            rs.close();
+            select.close();
+            if (bdata != null) {
+                try {
+                    out = buildObject(bdata, con);
+                } catch (Exception e) {
+                    log.info("parse problem skipping this order");
+                    log.error("parse", e);
+                }
+            }
 		} catch (Exception e) {
 			log.error("error",e);
 		} finally {
@@ -382,110 +370,111 @@ public class Utils {
 	 */
 	public static ArrayList<JSONObject> getLatestOrdersForGroup(String groupId, Connection con, boolean ignoreIsBatchable) {
 		ArrayList<JSONObject> out = new ArrayList<JSONObject>();
-		PreparedStatement select = null;
-		ResultSet rs = null;
-		PreparedStatement idSelect = null;
-		ResultSet oIds = null;
-		Statement stmt1 = null;
-		ResultSet orderRes = null;
-		
-		HashSet<String> orderIds = new HashSet<String>();
-		JSONArray groupOrders = new JSONArray();
-		String groupName = null;
-		
-		try {
-			String sql = "SELECT name FROM sinc.groups WHERE id = ?";
-			select = con.prepareStatement(sql);
-			select.setString(1,groupId);
-			rs = select.executeQuery();
-			if (rs.next()) {
-				groupName = rs.getString("name");
-			}
-			rs.close();
-			select.close();
-			
-			// Get the list of orderId's for this group
-			if (ignoreIsBatchable) {
-				sql = "SELECT id FROM sinc.orders WHERE completed = 1 AND deleted = 0 AND type != 'IMPORTED' AND groupId = ?";
-			} else {
-				sql = "SELECT id FROM sinc.orders WHERE completed = 1 AND deleted = 0 AND type != 'IMPORTED' AND groupId = ? AND isBatchable = 0";
-			}
-			idSelect = con.prepareStatement(sql);
-			idSelect.setString(1, groupId);
-			oIds = idSelect.executeQuery();
-			while (oIds.next()) {
-				orderIds.add(oIds.getString("id"));
-			}
-			oIds.close();
-			idSelect.close();
+        PreparedStatement select = null;
+        ResultSet rs = null;
+        PreparedStatement idSelect = null;
+        ResultSet oIds = null;
+        Statement stmt1 = null;
+        ResultSet orderRes = null;
 
-			// query each order and parse the data blob for pertinent info
-			int cnt = 0;
-			for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
-				String orderId = it.next();
-				stmt1 = con.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY,java.sql.ResultSet.CONCUR_READ_ONLY);
-				stmt1.setFetchSize(Integer.MIN_VALUE);
-				orderRes = stmt1.executeQuery("SELECT data,memberId FROM sinc.orders WHERE id ='"+orderId+"'");
-				
-				while (orderRes.next()) {
-					cnt++;
-					Blob b = orderRes.getBlob("data");
-					byte[] bdata = b.getBytes(1, (int) b.length());
-					//String tmp1 = new String(bdata);
-					//log.info(tmp1);
-					try {
-						JSONObject slimOrder = buildObject(groupId, groupName, orderId, orderRes.getString("memberId"), bdata);
-						if (slimOrder.get("testUser").equals("NO")) {
-							groupOrders.put(slimOrder);
-						}
-					} catch (Exception e) {
-						String tmp = new String(bdata);
-                        log.error(e);
-						log.error(tmp);
-					}
-				}
-				orderRes.close();
-				stmt1.close();
-			}
-			//log.info("Found "+cnt+" total orders before removing test users.");
-			
-			// groupOrders contains the slim versions of the orders for this group
-			// Find the latest order for each individual
-			//log.info("groupOrders.length: "+groupOrders.length());
-			if (groupOrders.length() > 0) {
-				//log.info(groupName+" has "+groupOrders.length()+" total completed orders.");
-				out = findLatestOrders(groupOrders);
-				//log.info("latest orders: "+out.size());
+        HashSet<String> orderIds = new HashSet<String>();
+        JSONArray groupOrders = new JSONArray();
+        String groupName = null;
 
-				//out = new ArrayList<JSONObject>();
-				//for (int i=0; i<groupOrders.length(); i++) {
-					//out.add((JSONObject) groupOrders.get(i));
-				//}
-			}
-		} catch (Exception e) {
-			log.error("error",e);
-		} finally {
-			try {
-				select.close();
-			} catch (Exception e) {}
-			try {
-				rs.close();
-			} catch (Exception e) {}
-			try {
-				idSelect.close();
-			} catch (Exception e) {}
-			try {
-				stmt1.close();
-			} catch (Exception e) {}
-			try {
-				oIds.close();
-			} catch (Exception e) {}
-			try {
-				orderRes.close();
-			} catch (Exception e) {}
-		}
-		//log.info(groupName+" "+out.size()+" real orders.");
-		return out;
+        try {
+            String sql = "SELECT name FROM sinc.groups WHERE id = ?";
+            select = con.prepareStatement(sql);
+            select.setString(1,groupId);
+            rs = select.executeQuery();
+            if (rs.next()) {
+                groupName = rs.getString("name");
+            }
+            rs.close();
+            select.close();
+
+            // Get the list of orderId's for this group
+            if (ignoreIsBatchable) {
+                sql = "SELECT id FROM sinc.orders WHERE completed = 1 AND deleted = 0 AND type != 'IMPORTED' AND groupId = ?";
+            } else {
+                sql = "SELECT id FROM sinc.orders WHERE completed = 1 AND deleted = 0 AND type != 'IMPORTED' AND groupId = ? AND isBatchable = 0";
+            }
+            idSelect = con.prepareStatement(sql);
+            idSelect.setString(1, groupId);
+            oIds = idSelect.executeQuery();
+            while (oIds.next()) {
+                orderIds.add(oIds.getString("id"));
+            }
+            oIds.close();
+            idSelect.close();
+
+            // query each order and parse the data blob for pertinent info
+            int cnt = 0;
+            for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
+                String orderId = it.next();
+                stmt1 = con.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY,java.sql.ResultSet.CONCUR_READ_ONLY);
+                stmt1.setFetchSize(Integer.MIN_VALUE);
+                orderRes = stmt1.executeQuery("SELECT data,memberId FROM sinc.orders WHERE id ='"+orderId+"'");
+                byte[] bdata = null;
+                if (orderRes.next()) {
+                    cnt++;
+                    Blob b = orderRes.getBlob("data");
+                    bdata = b.getBytes(1, (int) b.length());
+                    //String tmp1 = new String(bdata);
+                    //log.info(tmp1);
+                }
+                orderRes.close();
+                stmt1.close();
+                JSONObject slimOrder = null;
+                try {
+                    slimOrder = buildObject(bdata, con);
+                    if (slimOrder != null && slimOrder.get("testUser").equals("NO")) {
+                        JSONObject enrollment = parseEnrollment(new String(bdata,"UTF-8"));
+                        JSONArray classes = enrollment.getJSONArray("classes");
+                        String cls = getClassVal(classes, slimOrder.getString("memberId"), con);
+                        if (cls != null) {
+                            slimOrder.put("class",cls);
+                        }
+                        groupOrders.put(slimOrder);
+                    }
+                } catch (Exception e) {
+                    String tmp = new String(bdata);
+                    log.error(e);
+                    log.error(tmp);
+                }
+
+            }
+            //log.info("Found "+cnt+" total orders before removing test users.");
+
+            // groupOrders contains the slim versions of the orders for this group
+            // Find the latest order for each individual
+            if (groupOrders.length() > 0) {
+                out = findLatestOrders(groupOrders);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("error",e);
+        } finally {
+            try {
+                select.close();
+            } catch (Exception e) {}
+            try {
+                rs.close();
+            } catch (Exception e) {}
+            try {
+                idSelect.close();
+            } catch (Exception e) {}
+            try {
+                stmt1.close();
+            } catch (Exception e) {}
+            try {
+                oIds.close();
+            } catch (Exception e) {}
+            try {
+                orderRes.close();
+            } catch (Exception e) {}
+        }
+        //log.info(groupName+" "+out.size()+" real orders.");
+        return out;
 	}
 
 	public static ArrayList<JSONObject> getAllOrdersForGroup(String groupId) {
@@ -555,7 +544,7 @@ public class Utils {
 					//String tmp1 = new String(bdata);
 					//log.info(tmp1);
 					try {
-						JSONObject slimOrder = buildObject(groupId, groupName, orderId, orderRes.getString("memberId"), bdata);
+						JSONObject slimOrder = buildObject(bdata, con);
 						if (slimOrder.get("testUser").equals("NO")) {
 							groupOrders.put(slimOrder);
 						}
@@ -694,44 +683,48 @@ public class Utils {
 
 	/**
 	 * Stream parses the order blob from the orders table and builds a small JSONObject containing the minimum amount of information
-	 * @param groupId
-	 * @param groupName
-	 * @param orderId
-	 * @param memberId
-	 * @param bdata
-	 * @return
-	 * @throws Exception
-	 */
-	public static JSONObject buildObject(String groupId, String groupName, String orderId, String memberId, byte[] bdata) throws Exception {
-		JSONObject order = new JSONObject();
+
+
+	public static JSONObject buildObject(String groupId, String groupName, String orderId, String memberId, byte[] bdata, Connection con) throws Exception {
+        JsonFactory factory = new JsonFactory();
+        JSONObject order = new JSONObject();
 		order.put("groupId", groupId); // ***
 		order.put("name",groupName);
 		order.put("orderId", orderId);
 		order.put("memberId",memberId);
-		return buildObject(order,bdata);
+        String tmp = new String(bdata,"UTF-8");
+        JsonParser jp = factory.createParser(tmp);
+        return buildObject(order,jp, con);
+		//return buildObject(order,bdata);
 	}
-
-	public static JSONObject buildObject(JSONObject order, byte[] bdata) {
-		JsonFactory factory = new JsonFactory();
+     */
+	public static JSONObject buildObject(byte[] bdata) {
 		JSONObject out = null;
+        Connection con = null;
 		try {
-			String tmp = new String(bdata,"UTF-8");
-			JsonParser jp = factory.createParser(tmp);
-			out = buildObject(order,jp);
+            con = getConnection();
+			out = buildObject(bdata, con);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
+		} finally {
+            if (con != null) try {
+                con.close();
+            } catch (SQLException e) {}
+        }
 		return out;
 	}
+
 	/**
 	 * Stream parses the order blob from the orders table and builds a small JSONObject containing the minimum amount of information
 	 * @return
 	 * @throws Exception
 	 */
-	public static JSONObject buildObject(JSONObject order, JsonParser jp) throws IOException, SQLException {
-		
+	public static JSONObject buildObject(byte[] blob, Connection con) throws IOException, SQLException {
+        JSONObject order = new JSONObject();
+        JsonFactory factory = new JsonFactory();
+        JsonParser jp = factory.createParser(new String(blob, "UTF-8"));
 		HashSet<String> skip = new HashSet<String>();
 		//skip.add("declineReasons"); 
 		skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("enrollment"); skip.add("imported"); skip.add("current"); skip.add("usedDefinedContributions");
@@ -776,6 +769,9 @@ public class Utils {
                 } else if ("userName".equals(field)) {
                     jp.nextToken();
                     order.put("enroller",jp.getValueAsString());
+                } else if ("id".equals(field)) {
+                    jp.nextToken();
+                    order.put("orderId",jp.getValueAsString());
                 }
             }
         }
@@ -791,7 +787,7 @@ public class Utils {
                 }
             }
 		}
-        findClass(order);
+
 		return order;
 	}
 
@@ -853,6 +849,7 @@ public class Utils {
 		return declineReasons;
 	}
 
+    /*
     public static void getDependents(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
         String field;
         JsonToken current = null;
@@ -890,7 +887,7 @@ public class Utils {
             order.put("dependents", deps);
         }
     }
-
+*/
 	/**
 	 * retrieves the coverage lines from the order data blob.  Builds and array of JSONObjects and adds them to the slimmed down order object as the covs JSONArray
 	 * @param order
@@ -905,7 +902,7 @@ public class Utils {
         JSONObject premium = null;
 		JSONArray covs = new JSONArray();
 		HashSet<String> skips = new HashSet<String>();
-		skips.add("emergencyContacts"); skips.add("beneficiaries"); skips.add("signature"); skips.add("listBillAdjustments"); skips.add("carrierElectionData");
+		skips.add("emergencyContacts"); skips.add("signature"); skips.add("listBillAdjustments"); skips.add("carrierElectionData");
 		HashSet<String> saves = new HashSet<String>();
 		saves.add("productId"); saves.add("planName"); saves.add("startDate"); saves.add("benefit"); saves.add("endDate"); saves.add("type"); saves.add("subType"); saves.add("deduction"); saves.add("totalYearly"); saves.add("electionTier"); saves.add("splitId");
         saves.add("benefitLevel");
@@ -923,39 +920,9 @@ public class Utils {
                         jp.skipChildren();
                     }
                 } else if (field.equals("dependents")) {
-                    JSONArray deps = new JSONArray();
-                    current = jp.nextToken();
-                    if (current == JsonToken.START_ARRAY) {
-                        while (current != JsonToken.END_ARRAY) {
-                            current = jp.nextToken();
-                            if (current == JsonToken.START_OBJECT) {
-                                JSONObject dep = new JSONObject();
-                                while (current != JsonToken.END_OBJECT) {
-                                    current = jp.nextToken();
-                                    if (current == JsonToken.FIELD_NAME) {
-                                        field = jp.getCurrentName();
-                                        if (field.equals("deleted") && !jp.getValueAsBoolean()) {
-                                            dep.put("deleted", false);
-                                        } else if (field.equals("deleted")) {
-                                            dep.put("deleted", true);
-                                        } else {
-                                            jp.nextToken();
-                                            dep.put(field, jp.getValueAsString());
-                                        }
-                                    }
-                                }
-                                deps.put(dep);
-                            }
-                        }
-                    }
-                    if (order.has("dependents")) {
-                        JSONArray dps = order.getJSONArray("dependents");
-                        if (dps.length() == 0) {
-                            order.put("dependents", deps);
-                        }
-                    } else {
-                        order.put("dependents", deps);
-                    }
+                    buildDependents(order, jp);
+                } else if ("beneficiaries".equals(field)) {
+                    buildBeneficiaries(order,jp);
 				}  else {
 					// these are coverages
 					cov = new JSONObject();
@@ -1032,7 +999,70 @@ public class Utils {
 		} 
 		order.put("covs", covs);
 	}
-	
+
+    public static void buildBeneficiaries(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
+        JsonToken current = null;
+        String field = null;
+        JSONArray bens = new JSONArray();
+        current = jp.nextToken();
+        if (current == JsonToken.START_ARRAY) {
+            while (current != JsonToken.END_ARRAY) {
+                current = jp.nextToken();
+                if (current == JsonToken.START_OBJECT) {
+                    JSONObject ben = new JSONObject();
+                    while (current != JsonToken.END_OBJECT) {
+                        current = jp.nextToken();
+                        if (current == JsonToken.FIELD_NAME) {
+                            field = jp.getCurrentName();
+                            jp.nextToken();
+                            ben.put(field, jp.getValueAsString());
+                        }
+                    }
+                    bens.put(ben);
+                }
+            }
+        }
+        order.put("beneficiaries",bens);
+    }
+
+    public static void buildDependents(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
+        JsonToken current = null;
+        String field = null;
+        JSONArray deps = new JSONArray();
+        current = jp.nextToken();
+        if (current == JsonToken.START_ARRAY) {
+            while (current != JsonToken.END_ARRAY) {
+                current = jp.nextToken();
+                if (current == JsonToken.START_OBJECT) {
+                    JSONObject dep = new JSONObject();
+                    while (current != JsonToken.END_OBJECT) {
+                        current = jp.nextToken();
+                        if (current == JsonToken.FIELD_NAME) {
+                            field = jp.getCurrentName();
+                            if (field.equals("deleted") && !jp.getValueAsBoolean()) {
+                                dep.put("deleted", false);
+                            } else if (field.equals("deleted")) {
+                                dep.put("deleted", true);
+                            } else {
+                                jp.nextToken();
+                                dep.put(field, jp.getValueAsString());
+                            }
+                        }
+                    }
+                    deps.put(dep);
+                }
+            }
+        }
+        if (order.has("dependents")) {
+            JSONArray dps = order.getJSONArray("dependents");
+            if (dps.length() == 0) {
+                order.put("dependents", deps);
+            }
+        } else {
+            order.put("dependents", deps);
+        }
+    }
+
 	/**
 	 * Parses out the member information from the order data blob and places relevant data into a slimmed down order blob.
 	 * member: {employeeId:"123", dependents:[],...personal:{firstName:"John",dateOfBirth:"03/10/1962",..}}
@@ -1046,7 +1076,7 @@ public class Utils {
 		JsonToken current = null;
         HashSet<String> info = new HashSet();
         info.add("occupation"); info.add("locationCode"); info.add("locationDescription"); info.add("occupation"); info.add("status"); info.add("deductionsPerYear");
-        info.add("department"); info.add("dateOfHire"); info.add("hoursPerWeek"); info.add("annualSalary"); info.add("employeeId");
+        info.add("department"); info.add("dateOfHire"); info.add("hoursPerWeek"); info.add("annualSalary"); info.add("employeeId"); info.add("id");
 		HashSet<String> personal = new HashSet();
 		personal.add("firstName"); personal.add("lastName"); personal.add("dateOfBirth"); personal.add("ssn"); personal.add("gender");
 		personal.add("address1"); personal.add("address2"); personal.add("city"); personal.add("state"); personal.add("zip"); personal.add("phone");
@@ -1087,17 +1117,56 @@ public class Utils {
 						order.put("testUser", jp.getValueAsString());
 					}  else if (info.contains(field)) {
 						current = jp.nextToken();
-						order.put(field, jp.getValueAsString());
+                        if ("id".equals(field)) {
+                            order.put("memberId",jp.getValueAsString());
+                        } else {
+                            order.put(field, jp.getValueAsString());
+                        }
 					}
 				}
 			}
 		}
 	}
 
-    private static void findClass(JSONObject order) throws SQLException, IOException {
+    public static String getClassVal(JSONArray classes, String memberId, Connection con) throws SQLException {
+        String classVal = null;
+        boolean found = false;
+        String sql = "SELECT data FROM sinc.classes WHERE deleted = 0 AND id = ?";
+        PreparedStatement select = con.prepareStatement(sql);
+        ResultSet rs = null;
+
+        for (int i=0; i<classes.length(); i++) {
+            if (found) {
+                break;
+            }
+            JSONObject cls = null;
+            String classId = classes.getString(i);
+            select.setString(1,classId);
+            rs = select.executeQuery();
+            if (rs.next()) {
+                cls = new JSONObject(rs.getString("data"));
+            }
+            rs.close();
+            if (cls == null) {
+                continue;
+            }
+            JSONArray members = cls.getJSONArray("members");
+            for (int j=0; j<members.length(); j++) {
+                if (members.getString(j).equals(memberId)) {
+                    classVal = cls.getString("name");
+                    found = true;
+                    break;
+                }
+            }
+        }
+        select.close();
+        return classVal;
+    }
+/*
+    private static void findClass(JSONObject order, Connection con) throws SQLException, IOException {
         String orderId = order.getString("orderId");
         String memberId = order.getString("memberId");
-        Connection con = getConnection();
+        //Connection con = getConnection();
         Statement stmt1 = con.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
         stmt1.setFetchSize(Integer.MIN_VALUE);
         ResultSet rs = stmt1.executeQuery("SELECT data, memberId FROM sinc.orders WHERE id ='" + orderId + "'");
@@ -1144,7 +1213,7 @@ public class Utils {
             }
         }
     }
-
+*/
     public static JSONObject parseEnrollment(String json) throws IOException {
         JSONObject out = new JSONObject();
         JsonFactory factory = new JsonFactory();

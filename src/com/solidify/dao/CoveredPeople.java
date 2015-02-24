@@ -13,10 +13,14 @@ import java.sql.SQLException;
 public class CoveredPeople {
     private Coverage coverage;
     private Person coveredPerson;
+    private Connection con;
+    private boolean manageConnection;
 
-    public CoveredPeople(Coverage coverage, Person coveredPerson) {
+    public CoveredPeople(Coverage coverage, Person coveredPerson, Connection con) {
         this.coverage = coverage;
         this.coveredPerson = coveredPerson;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     public void save() throws SQLException, MissingProperty {
@@ -30,9 +34,8 @@ public class CoveredPeople {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "INSERT INTO FE.CoveredPeople (coverageId,personId) VALUES (?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, coverage.getCoverageId());
@@ -40,7 +43,7 @@ public class CoveredPeople {
             insert.executeUpdate();
             insert.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 }

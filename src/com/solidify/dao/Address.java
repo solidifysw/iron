@@ -21,10 +21,12 @@ public class Address {
     private String zip;
     private int associationType;
     private int associationId;
+    private Connection con;
+    private boolean manageConnection;
     public static final int GROUP = 1;
     public static final int PERSON = 2;
 
-    public Address(int addressId, String type, String line1, String line2, String city, String state, String zip, int associationType, int associationId) {
+    public Address(int addressId, String type, String line1, String line2, String city, String state, String zip, int associationType, int associationId, Connection con) {
         this.addressId = addressId;
         this.type = type == null ? "" : type;
         this.line1 = line1 == null ? "" : line1;
@@ -32,16 +34,26 @@ public class Address {
         this.city = city == null ? "" : city;
         this.state = state == null ? "" : state;
         this.zip = zip == null ? "" : zip;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
         this.associationType = associationType;
         this.associationId = associationId;
     }
 
     public Address(String type, String line1, String line2, String city, String state, String zip, int associationType, int associationId) {
-        this(-1,type,line1,line2,city,state,zip,associationType,associationId);
+        this(-1,type,line1,line2,city,state,zip,associationType,associationId, null);
+    }
+
+    public Address(String type, String line1, String line2, String city, String state, String zip, int associationType, int associationId, Connection con) {
+        this(-1,type,line1,line2,city,state,zip,associationType,associationId, con);
     }
 
     public Address(String type, String line1, String line2, String city, String state, String zip) {
-        this(-1,type,line1,line2,city,state,zip,-1,-1);
+        this(-1,type,line1,line2,city,state,zip,-1,-1,null);
+    }
+
+    public Address(String type, String line1, String line2, String city, String state, String zip,Connection con) {
+        this(-1,type,line1,line2,city,state,zip,-1,-1,con);
     }
 
     public void setAssociation(int associationType, int associationId) {
@@ -97,9 +109,10 @@ public class Address {
 
     private void insert() throws SQLException {
         String sql = "INSERT INTO FE.Addresses (line1, line2, city, state, zip, type) VALUES (?,?,?,?,?,?)";
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) {
+                con = Utils.getConnection();
+            }
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setString(1,line1);
             insert.setString(2,line2);
@@ -124,7 +137,7 @@ public class Address {
             insert.executeUpdate();
             insert.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

@@ -16,16 +16,20 @@ public class Offer {
     private Group group;
     private Product product;
     private Pkg pkg;
+    private Connection con;
+    private boolean manageConnection;
 
-    public Offer(int offerId, Group group, Product product, Pkg pkg) {
+    public Offer(int offerId, Group group, Product product, Pkg pkg, Connection con) {
         this.offerId = offerId;
         this.group = group;
         this.product = product;
         this.pkg = pkg;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
-    public Offer(Group group, Product product, Pkg pkg) {
-        this(-1, group, product, pkg);
+    public Offer(Group group, Product product, Pkg pkg, Connection con) {
+        this(-1, group, product, pkg, con);
     }
 
     public int getOfferId() {
@@ -46,9 +50,8 @@ public class Offer {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "INSERT INTO FE.Offers(groupId,productId,packageId) VALUES(?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
@@ -62,7 +65,7 @@ public class Offer {
             rs.close();
             insert.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

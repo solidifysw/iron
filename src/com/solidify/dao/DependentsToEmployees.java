@@ -14,10 +14,14 @@ import java.util.prefs.PreferenceChangeEvent;
 public class DependentsToEmployees {
     private Person ee;
     private Dependent dp;
+    private Connection con;
+    private boolean manageConnection;
 
-    public DependentsToEmployees(Person ee, Dependent dp) {
+    public DependentsToEmployees(Person ee, Dependent dp, Connection con) {
         this.ee = ee;
         this.dp = dp;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     public void save() throws MissingProperty, SQLException {
@@ -31,9 +35,8 @@ public class DependentsToEmployees {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "INSERT INTO FE.DependentsToEmployees (employeeId,dependentId,relationship) VALUES (?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, ee.getPersonId());
@@ -42,7 +45,7 @@ public class DependentsToEmployees {
             insert.executeUpdate();
             insert.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 }

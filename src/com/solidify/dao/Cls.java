@@ -22,8 +22,10 @@ public class Cls {
     private String operator;
     private String value;
     private JSONObject sourceData;
+    private Connection con;
+    private boolean manageConnection;
 
-    public Cls(int classId, Group group, Pkg pkg, String name, String field, String operator, String value) {
+    public Cls(int classId, Group group, Pkg pkg, String name, String field, String operator, String value, Connection con) {
         this.classId = classId;
         this.group = group;
         this.pkg = pkg;
@@ -31,10 +33,16 @@ public class Cls {
         this.field = field;
         this.operator = operator;
         this.value = value;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     public Cls(Group group, Pkg pkg, String name, String field, String operator, String value) {
-        this(-1, group, pkg, name, field, operator, value);
+        this(-1, group, pkg, name, field, operator, value,null);
+    }
+
+    public Cls(Group group, Pkg pkg, String name, String field, String operator, String value, Connection con) {
+        this(-1, group, pkg, name, field, operator, value, con);
     }
 
     public void setSourceData(JSONObject sourceData) {
@@ -86,9 +94,8 @@ public class Cls {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "INSERT INTO FE.Classes (groupId,packageId,name,field,operator,value) VALUES (?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
@@ -103,7 +110,7 @@ public class Cls {
                 classId = rs.getInt(1);
             }
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

@@ -18,19 +18,28 @@ public class Group {
     private String alias;
     private int active;
     private ArrayList<Address> addresses;
+    private Connection con;
+    private boolean manageConnection;
+
     //private ArrayList<Phone> phoneNumbers;
     //private Person mainContact;
 
     public Group(String name, String alias, int active) {
-        this(-1,name,alias,active);
+        this(-1,name,alias,active,null);
     }
 
-    public Group(int groupId, String name, String alias, int active) {
+    public Group(String name, String alias, int active, Connection con) {
+        this(-1,name,alias,active,con);
+    }
+
+    public Group(int groupId, String name, String alias, int active, Connection con) {
         this.groupId = groupId;
         this.name = name;
         this.alias = alias;
         this.active = active;
         this.addresses = new ArrayList<Address>();
+        this.con = con;
+        this.manageConnection = this.con == null ? true : false;
     }
 
     public int getGroupId() {
@@ -82,9 +91,10 @@ public class Group {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) {
+                con = Utils.getConnection();
+            }
             String sql = "INSERT INTO FE.Groups (name,alias,active) VALUES (?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setString(1,name);
@@ -95,7 +105,7 @@ public class Group {
             if (rs.next()) groupId = rs.getInt(1);
             insert.close();
             rs.close();
-            con.close();
+            if (manageConnection) con.close();
             if (!addresses.isEmpty()) {
                 for (Address address : addresses) {
                     try {
@@ -107,7 +117,7 @@ public class Group {
                 }
             }
         } finally {
-            if (con != null) {
+            if (manageConnection && con != null) {
                 con.close();
             }
         }

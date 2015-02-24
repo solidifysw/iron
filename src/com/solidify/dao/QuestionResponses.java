@@ -22,24 +22,14 @@ public class QuestionResponses {
         this.app = app;
         this.json = json;
         this.con = con;
-        if (con != null) {
-            manageConnection = false;
-        }
+        this.manageConnection = con == null ? true : false;
         if (questionResponseId > -1) {
             fetch();
         }
     }
 
-    public QuestionResponses(int questionResponseId) throws SQLException {
-        this(questionResponseId,null,null,null);
-    }
-
     public QuestionResponses(int questionResponseId,Connection con) throws SQLException {
         this(questionResponseId,null,null,con);
-    }
-
-    public QuestionResponses(App app, String json) throws SQLException {
-        this(-1,app,json,null);
     }
 
     public QuestionResponses(App app, String json, Connection con) throws SQLException {

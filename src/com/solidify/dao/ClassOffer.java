@@ -13,10 +13,14 @@ import java.sql.SQLException;
 public class ClassOffer {
     private Cls cls;
     private Offer offer;
+    private Connection con;
+    private boolean manageConnection;
 
-    public ClassOffer(Cls cls, Offer offer) {
+    public ClassOffer(Cls cls, Offer offer, Connection con) {
         this.cls = cls;
         this.offer = offer;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     public void save() throws SQLException, MissingProperty {
@@ -30,9 +34,8 @@ public class ClassOffer {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "INSERT INTO FE.ClassOffers (classId, offerId) VALUES (?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, cls.getClassId());
@@ -40,7 +43,7 @@ public class ClassOffer {
             insert.executeUpdate();
             insert.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 }

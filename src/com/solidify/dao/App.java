@@ -20,26 +20,26 @@ public class App {
     private Date dateSaved;
     private String enroller;
     private int appSourceId;
+    private Connection con;
+    private boolean manageConnection;
 
-    public App(int appId, Group group, String sincOrderId, Date dateSaved, String enroller, int appSourceId) {
+    public App(int appId, Group group, String sincOrderId, Date dateSaved, String enroller, int appSourceId, Connection con) {
         this.appId = appId;
         this.group = group;
         this.sincOrderId = sincOrderId;
         this.dateSaved = dateSaved;
         this.enroller = enroller;
         this.appSourceId = appSourceId;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
-    public App(Group group, String sincOrderId, Date dateSaved, String enroller, int appSourceId) {
-        this(-1,group,sincOrderId,dateSaved,enroller,appSourceId);
+    public App(Group group, String sincOrderId, Date dateSaved, String enroller, int appSourceId, Connection con) {
+        this(-1,group,sincOrderId,dateSaved,enroller,appSourceId, con);
     }
 
-    public App(int appId, Group group, Date dateSaved, String enroller, int appSourceId) {
-        this(appId,group,null,dateSaved,enroller,appSourceId);
-    }
-
-    public App(Group group, Date dateSaved, String enroller, int appSourceId) {
-        this(-1,group,null,dateSaved,enroller,appSourceId);
+    public App(Group group, Date dateSaved, String enroller, int appSourceId, Connection con) {
+        this(-1,group,null,dateSaved,enroller,appSourceId,con);
     }
 
     public int getAppId() {
@@ -57,9 +57,8 @@ public class App {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "INSERT INTO FE.apps (groupId,orderId,appSourceId,enroller,dateSaved) VALUES (?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
@@ -79,7 +78,7 @@ public class App {
             insert.close();
             rs.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

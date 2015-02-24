@@ -25,10 +25,6 @@ public class Signature {
         }
     }
 
-    public Signature(App app, JSONObject signature) {
-        this(app,signature,null);
-    }
-
     public void save() throws SQLException {
         if (isValid()) {
             insert();

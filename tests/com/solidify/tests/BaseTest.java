@@ -1,5 +1,6 @@
 package com.solidify.tests;
 
+import org.json.JSONObject;
 import org.junit.Before;
 
 import java.sql.Connection;

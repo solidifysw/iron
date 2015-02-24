@@ -2,6 +2,7 @@ package com.solidify.dao;
 
 import com.solidify.exceptions.MissingProperty;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Date;
 
@@ -11,15 +12,17 @@ import java.util.Date;
 public class Dependent extends Person {
     private Person ee;
     private String relationship;
+    private DependentsToEmployees dte;
 
-    public Dependent(Person ee, String firstName,String lastName,String ssn, String dateOfBirth, String gender, String relationship, Date start, Date end) {
-        super(firstName,lastName,false,ssn,dateOfBirth, gender, start);
+    public Dependent(Person ee, String firstName,String lastName,String ssn, String dateOfBirth, String gender, String relationship, Date start, Date end, Connection con) {
+        super(firstName,lastName,false,ssn,dateOfBirth, gender, start, con);
         this.ee = ee;
         this.relationship = relationship;
+        this.dte = new DependentsToEmployees(ee,this,con);
     }
 
-    public Dependent(Person ee, String firstName,String lastName,String ssn, String dateOfBirth, String gender, String relationship, Date start) {
-        this(ee,firstName,lastName,ssn,dateOfBirth,gender,relationship,start,null);
+    public Dependent(Person ee, String firstName,String lastName,String ssn, String dateOfBirth, String gender, String relationship, Date start, Connection con) {
+        this(ee,firstName,lastName,ssn,dateOfBirth,gender,relationship,start,null,con);
     }
 
     public String getRelationship() {
@@ -28,7 +31,6 @@ public class Dependent extends Person {
 
     public void save() throws SQLException, MissingProperty {
         super.save();
-        DependentsToEmployees dte = new DependentsToEmployees(ee,this);
         dte.save();
     }
 }

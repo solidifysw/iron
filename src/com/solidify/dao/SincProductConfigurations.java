@@ -17,8 +17,10 @@ public class SincProductConfigurations {
     private String groupUUID;
     private String packageUUID;
     private HashSet<JSONObject> productConfigurations;
+    private Connection con;
+    private boolean manageConnection;
 
-    public SincProductConfigurations(String groupUUID, String packageUUID) throws MissingProperty, SQLException {
+    public SincProductConfigurations(String groupUUID, String packageUUID, Connection con) throws MissingProperty, SQLException {
         this.groupUUID = groupUUID;
         this.packageUUID = packageUUID;
         this.productConfigurations = new HashSet<JSONObject>();
@@ -27,13 +29,14 @@ public class SincProductConfigurations {
         } else if (packageUUID == null || "".equals(packageUUID)) {
             throw new MissingProperty("Missing packageUUID");
         }
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
         load();
     }
 
     private void load() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "SELECT id, data FROM sinc.productConfigurations WHERE packageId = ? AND groupId = ? AND deleted = 0";
             PreparedStatement pack = con.prepareStatement(sql);
             pack.setString(1, packageUUID);
@@ -48,7 +51,7 @@ public class SincProductConfigurations {
             rs.close();
             pack.close();
         } finally {
-            if(con!=null)con.close();
+            if(manageConnection && con!=null)con.close();
         }
     }
 

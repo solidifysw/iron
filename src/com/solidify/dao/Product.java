@@ -23,17 +23,13 @@ public class Product {
     private String displayName;
     private int carrierId;
     private String carrierName;
+    private Connection con;
+    private boolean manageConnection;
 
-    public Product(int productId, String solidifyId, String displayName, int carrierId, String carrierName) {
-        this.productId = productId;
+    public Product(String solidifyId, Connection con) throws SQLException, MissingProperty {
         this.solidifyId = solidifyId;
-        this.displayName = displayName;
-        this.carrierId = carrierId;
-        this.carrierName = carrierName;
-    }
-
-    public Product(String solidifyId) throws SQLException, MissingProperty {
-        this.solidifyId = solidifyId;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
         load();
     }
 
@@ -69,11 +65,10 @@ public class Product {
         if (solidifyId == null || "".equals(solidifyId)) {
             throw new MissingProperty("Missing the solidifyId");
         }
-       Connection con = null;
         try {
             String sql = "SELECT FE.Products.productId, FE.Products.displayName, FE.Products.carrierId, FE.Carriers.name AS carrierName FROM FE.Products, FE.Carriers " +
                     "WHERE FE.Products.carrierId = FE.Carriers.carrierId AND FE.Carriers.active = 1 AND FE.Products.solidifyId = ?";
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             PreparedStatement select = con.prepareStatement(sql);
             select.setString(1,solidifyId);
             ResultSet rs = select.executeQuery();
@@ -84,7 +79,7 @@ public class Product {
                 carrierName = rs.getString("carrierName");
             }
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

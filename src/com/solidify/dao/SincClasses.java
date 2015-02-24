@@ -18,8 +18,10 @@ public class SincClasses {
     private HashSet classes;
     private String groupUUID;
     private String packageUUID;
+    private Connection con;
+    private boolean manageConnection;
 
-    public SincClasses(String groupUUID, String packageUUID) throws MissingProperty, SQLException {
+    public SincClasses(String groupUUID, String packageUUID, Connection con) throws MissingProperty, SQLException {
         this.groupUUID = groupUUID;
         this.packageUUID = packageUUID;
         classes = new HashSet<JSONObject>();
@@ -28,13 +30,14 @@ public class SincClasses {
         } else if (packageUUID == null || "".equals(packageUUID)) {
             throw new MissingProperty("Missing packageUUID");
         }
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
         load();
     }
 
     private void load() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) con = Utils.getConnection();
             String sql = "SELECT data AS json FROM sinc.classes WHERE packageId = ? AND groupId = ? AND deleted = 0";
             PreparedStatement select = con.prepareStatement(sql);
             select.setString(1, packageUUID);
@@ -48,7 +51,7 @@ public class SincClasses {
             rs.close();
             select.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

@@ -21,7 +21,7 @@ public class DumpBlob implements Runnable {
 
     public void run() {
         log.info("DumpBlob thread started.");
-        JSONObject obj = Utils.dumpOrderBlob(orderId,includeSourceBlob);
+       // JSONObject obj = Utils.dumpOrderBlob(orderId,includeSourceBlob);
         log.info("DumpBlob thread finished.");
     }
 }

@@ -28,8 +28,7 @@ public class TestEeInsert extends BaseTest{
             start.set(Calendar.MONTH, 2);
             start.set(Calendar.YEAR, 2015);
             int personId = -1;
-            Employee employee = new Employee("Testy","Tester","123-12-1234","1962-03-10","MALE","2008-03-10","2","The Man","man1","1","West","ACTIVE","Sales",40,26,"150000.00",start.getTime());
-            employee.setConnection(con);
+            Employee employee = new Employee("Testy","Tester","123-12-1234","1962-03-10","MALE","2008-03-10","2","The Man","man1","1","West","ACTIVE","Sales",40,26,"150000.00",start.getTime(),con);
             employee.save();
             assertTrue(employee.getPersonId()> -1);
         } catch (SQLException e) {

@@ -23,12 +23,16 @@ public class Coverage {
     private String declineReason;
     private float annualPremium;
     private float modalPremium;
+    private String start;
+    private String end;
+    private Connection con;
     private boolean manageConnection = true;
     public static final int PENDED = 1;
     public static final int NOT_PENDED = 0;
     public static final String NA = "";
 
-    public Coverage(Offer offer, App app, String benefit, int electionTypeId, int pending, float annualPremium, float modalPremium) {
+    public Coverage(int coverageId, Offer offer, App app, String benefit, int electionTypeId, int pending, float annualPremium, float modalPremium, String start, String end, Connection con) {
+        this.coverageId = coverageId;
         this.offer = offer;
         this.app = app;
         this.benefit = benefit;
@@ -38,6 +42,10 @@ public class Coverage {
         this.coverageId = -1;
         this.annualPremium = annualPremium;
         this.modalPremium = modalPremium;
+        this.start = start;
+        this.end = end;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     /**
@@ -47,8 +55,8 @@ public class Coverage {
      * @param json
      * @param electionTypeId
      */
-    public Coverage(Offer offer, App app, JSONObject json, int electionTypeId, int pending, float annualPremium, float modalPremium) {
-        this(offer,app,json.getString("benefit"),electionTypeId, pending,annualPremium,modalPremium);
+    public Coverage(Offer offer, App app, JSONObject json, int electionTypeId, int pending, float annualPremium, float modalPremium,String start, String end, Connection con) {
+        this(-1,offer,app,json.getString("benefit"),electionTypeId, pending,annualPremium,modalPremium,start,end,con);
         if (json.getString("type").equals("CANCER")) {
             this.benefit = json.getString("benefitLevel");
         }
@@ -78,10 +86,9 @@ public class Coverage {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
-            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId, pending, declineReason, annualPremium, modalPremium) VALUES (?,?,?,?,?,?,?,?)";
+            if (manageConnection) con = Utils.getConnection();
+            String sql = "INSERT INTO FE.Coverages (appId,offerId,benefit, electionTypeId, pending, declineReason, annualPremium, modalPremium, start, end) VALUES (?,?,?,?,?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, app.getAppId());
             insert.setInt(2, offer.getOfferId());
@@ -91,6 +98,8 @@ public class Coverage {
             insert.setString(6, declineReason);
             insert.setFloat(7,annualPremium);
             insert.setFloat(8,modalPremium);
+            insert.setString(9,start);
+            insert.setString(10,end);
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {
@@ -99,12 +108,8 @@ public class Coverage {
             insert.close();
             rs.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
-    }
-
-    public static int getElectionTypeId(String benefitString) throws SQLException, NoValue {
-        return getElectionTypeId(benefitString, null);
     }
 
     public static int getElectionTypeId(String benefitString, Connection con) throws SQLException, NoValue {
@@ -143,5 +148,49 @@ public class Coverage {
 
     public boolean isLoaded() {
         return coverageId > -1 ? true : false;
+    }
+
+    public App getApp() {
+        return app;
+    }
+
+    public Offer getOffer() {
+        return offer;
+    }
+
+    public String getBenefit() {
+        return benefit;
+    }
+
+    public int getElectionTypeId() {
+        return electionTypeId;
+    }
+
+    public int getPending() {
+        return pending;
+    }
+
+    public String getDeclineReason() {
+        return declineReason;
+    }
+
+    public float getAnnualPremium() {
+        return annualPremium;
+    }
+
+    public float getModalPremium() {
+        return modalPremium;
+    }
+
+    public void setCoverageId(int coverageId) {
+        this.coverageId = coverageId;
+    }
+
+    public void setAnnualPremium(float annualPremium) {
+        this.annualPremium = annualPremium;
+    }
+
+    public void setModalPremium(float modalPremium) {
+        this.modalPremium = modalPremium;
     }
 }

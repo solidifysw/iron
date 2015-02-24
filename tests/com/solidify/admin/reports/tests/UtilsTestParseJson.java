@@ -21,7 +21,7 @@ public class UtilsTestParseJson extends TestCase {
             JsonParser jp = f.createParser(new File("/Users/jrobins/Documents/intellij/iron/tests/com/solidify/admin/reports/tests/sample.json"));
             obj = new JSONObject();
             obj.put("groupName","");
-            obj = Utils.buildObject(obj,jp);
+            //obj = Utils.buildObject(obj,jp);
         } catch (Exception e) {
             e.printStackTrace();
         }

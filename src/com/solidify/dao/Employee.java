@@ -15,8 +15,8 @@ public class Employee extends Person {
 
     public Employee(String firstName, String lastName, String ssn, String dateOfBirth, String gender, String dateOfHire, String employerClass, String occupation, String employeeId,
                     String locationCode, String locationDescription, String status, String department, int hoursPerWeek, int deductionsPerYear,
-                    String annualSalary, Date start, Date end) {
-        super(firstName,lastName,true,ssn,dateOfBirth,gender,start, end);
+                    String annualSalary, Date start, Date end, Connection con) {
+        super(firstName,lastName,true,ssn,dateOfBirth,gender,start, end, con);
 
         float salary = 0f;
         DecimalFormat df = new DecimalFormat("#,###,###.00");
@@ -25,13 +25,13 @@ public class Employee extends Person {
         } catch (Exception e) {}
 
         this.employmentInfo = new EmploymentInfo(this,dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,
-                "ACTIVE".equals(status)?1:0,department,hoursPerWeek,deductionsPerYear,salary);
+                "ACTIVE".equals(status)?1:0,department,hoursPerWeek,deductionsPerYear,salary,con);
     }
 
     public Employee(String firstName, String lastName, String ssn, String dateOfBirth, String gender, String dateOfHire, String employerClass, String occupation, String employeeId,
                     String locationCode, String locationDescription, String status, String department, int hoursPerWeek, int deductionsPerYear,
-                    String annualSalary, Date start) {
-        this(firstName,lastName,ssn,dateOfBirth, gender, dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,status,department,hoursPerWeek,deductionsPerYear,annualSalary,start,null);
+                    String annualSalary, Date start, Connection con) {
+        this(firstName,lastName,ssn,dateOfBirth, gender, dateOfHire,employerClass,occupation,employeeId,locationCode,locationDescription,status,department,hoursPerWeek,deductionsPerYear,annualSalary,start,null,con);
     }
 
     public void save() throws SQLException, MissingProperty {
@@ -41,10 +41,5 @@ public class Employee extends Person {
 
     public EmploymentInfo getEmploymentInfo() {
         return this.employmentInfo;
-    }
-
-    public void setConnection(Connection con) {
-        super.setConnection(con);
-        employmentInfo.setConnection(con);
     }
 }

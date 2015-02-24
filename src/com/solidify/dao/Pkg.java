@@ -25,8 +25,10 @@ public class Pkg {
     private String login2;
     private String login2Label;
     private String password;
+    private Connection con;
+    private boolean manageConnection;
 
-    public Pkg(Group group, String enrollStartStr, String enrollEndStr, String situsState, int deductionsPerYear, String login1, String login1Label, String login2, String login2Label, String password) {
+    public Pkg(Group group, String enrollStartStr, String enrollEndStr, String situsState, int deductionsPerYear, String login1, String login1Label, String login2, String login2Label, String password, Connection con) {
         this.packageId = -1;
         this.group = group;
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -47,6 +49,8 @@ public class Pkg {
         this.login2 = login2;
         this.login2Label = login2Label;
         this.password = password;
+        this.con = con;
+        this.manageConnection = con == null ? true : false;
     }
 
     public int getPackageId() {
@@ -67,9 +71,10 @@ public class Pkg {
     }
 
     private void insert() throws SQLException {
-        Connection con = null;
         try {
-            con = Utils.getConnection();
+            if (manageConnection) {
+                con = Utils.getConnection();
+            }
             String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState,deductionsPerYear,login1,login1Label,login2,login2Label,password) VALUES (?,?,?,?,?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
@@ -92,7 +97,7 @@ public class Pkg {
             insert.close();
             rs.close();
         } finally {
-            if (con != null) con.close();
+            if (manageConnection && con != null) con.close();
         }
     }
 

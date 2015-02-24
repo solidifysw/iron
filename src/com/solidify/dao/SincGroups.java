@@ -25,9 +25,7 @@ public class SincGroups {
     public SincGroups(Connection con) throws SQLException {
         this.groups = new HashSet<JSONObject>();
         this.con = con;
-        if (this.con != null) {
-            this.manageConnection = false;
-        }
+        this.manageConnection = this.con == null ? true : false;
         load();
     }
 

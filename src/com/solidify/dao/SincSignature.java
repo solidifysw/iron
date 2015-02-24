@@ -18,19 +18,13 @@ public class SincSignature {
     private String orderId;
     private JSONObject json;
     private Connection con;
-    private boolean manageConnection = true;
+    private boolean manageConnection;
 
     public SincSignature(String orderId, Connection con) throws IOException, SQLException {
         this.orderId = orderId;
         this.con = con;
-        if (con != null) {
-            this.manageConnection = false;
-        }
+        this.manageConnection = con == null ? true : false;
         load();
-    }
-
-    public SincSignature(String orderId) throws IOException, SQLException {
-        this(orderId,null);
     }
 
     private void load() throws SQLException, IOException {

@@ -107,7 +107,7 @@ public class DuplicateProcessor implements Runnable {
 			bw.newLine();
 			
 			con = Utils.getConnection();
-			TreeMap<String,String> groups = Utils.getActiveGroups();
+			TreeMap<String,String> groups = Utils.getActiveGroups(con);
 			HashMap<String,String> ids = new HashMap<String,String>();
 			
 			for (Iterator<String> it = groups.keySet().iterator(); it.hasNext();) {
