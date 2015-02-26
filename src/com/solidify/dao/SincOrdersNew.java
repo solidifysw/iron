@@ -41,6 +41,7 @@ public class SincOrdersNew {
         ResultSet orderRes = null;
         HashSet<String> skips = new HashSet<>();
         skips.add("member"); skips.add("enrollment");
+
         HashSet<String> eSkip = new HashSet<>();
         eSkip.add("member"); eSkip.add("declineReasons"); eSkip.add("attended"); eSkip.add("keepCoverage"); eSkip.add("classId");
         eSkip.add("disclosureQuestions"); eSkip.add("data"); eSkip.add("packageId"); eSkip.add("isBatchable"); eSkip.add("prePostTaxSelections");
@@ -91,7 +92,8 @@ public class SincOrdersNew {
                     ParsedObject enrollParsed = new ParsedObject(json,eSkip);
                     JSONObject enrollment = enrollParsed.get();
                     JSONArray classes = enrollment.getJSONArray("classes");
-                    String cls = getClassVal(classes, slimOrder.getString("memberId"), con);
+                    // The class may be in the old sytle classes array
+                    String cls = processClasses(classes, slimOrder.getString("memberId"), con);
                     if (cls != null) {
                         slimOrder.put("class",cls);
                     }
@@ -109,6 +111,40 @@ public class SincOrdersNew {
         if (groupOrders.length() > 0) {
             orders = findLatestOrders(groupOrders);
         }
+    }
+
+    /**
+     * Finds the class for this memberId.  enrollment.classes may be the old style that has the list of memberId's in
+     * the members object inside the classes array. old style classes:[{...},{...}]
+     * new style classes is an array of classIds.  new style classes:['a','b'...] Have to query the classes table to
+     * find the members.
+     * @param classes
+     * @param memberId
+     * @param con
+     * @return
+     * @throws SQLException
+     */
+    public String processClasses(JSONArray classes, String memberId, Connection con) throws SQLException {
+        String out = null;
+        boolean found = false;
+        for (int i = 0; i < classes.length(); i++) {
+            if (found)  break;
+            Object tmp = classes.get(i);
+            if (tmp.getClass().equals(String.class)) {
+                out = getClassVal(classes,memberId,con);
+            } else if (tmp.getClass().equals(JSONObject.class)) {
+                JSONObject jo = classes.getJSONObject(i);
+                JSONArray mems = jo.getJSONArray("members");
+                for (int j=0; j<mems.length(); j++) {
+                    if (mems.getString(i).equals(memberId)) {
+                        out = jo.getString("id");
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+        return out;
     }
 
     public String getClassVal(JSONArray classes, String memberId, Connection con) throws SQLException {
