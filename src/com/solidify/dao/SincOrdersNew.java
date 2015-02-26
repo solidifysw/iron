@@ -41,6 +41,14 @@ public class SincOrdersNew {
         ResultSet orderRes = null;
         HashSet<String> skips = new HashSet<>();
         skips.add("member"); skips.add("enrollment");
+        HashSet<String> eSkip = new HashSet<>();
+        eSkip.add("member"); eSkip.add("declineReasons"); eSkip.add("attended"); eSkip.add("keepCoverage"); eSkip.add("classId");
+        eSkip.add("disclosureQuestions"); eSkip.add("data"); eSkip.add("packageId"); eSkip.add("isBatchable"); eSkip.add("prePostTaxSelections");
+        eSkip.add("type"); eSkip.add("dsid"); eSkip.add("imported"); eSkip.add("id"); eSkip.add("questionAnswers"); eSkip.add("groupId");
+        eSkip.add("dateSaved"); eSkip.add("userName"); eSkip.add("dateCreated"); eSkip.add("memeberId"); eSkip.add("enrollment.id");
+        eSkip.add("enrollment.loginScheme"); eSkip.add("enrollment.packages"); eSkip.add("enrollment.accountId"); eSkip.add("status");
+        eSkip.add("enrollment.alias"); eSkip.add("enrollment.name"); eSkip.add("enrollment.employer"); eSkip.add("enrollment.deductionsPerYear");
+        eSkip.add("enrollment.productConfigs"); eSkip.add("carrierData"); eSkip.add("completed");
 
         HashSet<String> orderIds = new HashSet<String>();
         JSONArray groupOrders = new JSONArray();
@@ -76,11 +84,12 @@ public class SincOrdersNew {
 
             JSONObject slimOrder = null;
             try {
-
-                ParsedObject po = new ParsedObject(new String(bdata,"UTF-8"),skips,ParsedObject.SKIP);
+                String json = new String(bdata,"UTF-8");
+                ParsedObject po = new ParsedObject(json,skips);
                 slimOrder = po.get();
                 if (slimOrder != null && slimOrder.get("testUser").equals("NO")) {
-                    JSONObject enrollment = parseEnrollment(new String(bdata,"UTF-8"));
+                    ParsedObject enrollParsed = new ParsedObject(json,eSkip);
+                    JSONObject enrollment = enrollParsed.get();
                     JSONArray classes = enrollment.getJSONArray("classes");
                     String cls = getClassVal(classes, slimOrder.getString("memberId"), con);
                     if (cls != null) {

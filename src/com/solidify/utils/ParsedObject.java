@@ -17,12 +17,9 @@ import java.util.Stack;
 public class ParsedObject {
     private String json;
     private JSONObject jo;
-    private HashSet<String> paths;
+    private HashSet<String> skips;
     private String currentKey;
     private Stack<Object> els;
-    private int skipOrInclude;
-    public static final int SKIP = 1;
-    public static final int INCLUDE = 2;
 
     /**
      * Stream parses the json input string into a JSONObject accessible with the get method.  Accepts a HashSet of Strings
@@ -31,16 +28,14 @@ public class ParsedObject {
      * by including b and c.e in the skips HashSet the resultant JSONObject would contain:
      * {"a":"abc", "c":{"d":"ghi"}}
      * @param json String of json to stream parse
-     * @param paths list of dot notattion strings of elements to skip when parsing the input json
-     * @param skipOrInclude indicates if the paths are to be skipped or included
+     * @param skips list of dot notattion strings of elements to skip when parsing the input json
      */
-    public ParsedObject(String json, HashSet<String> paths, int skipOrInclude) {
+    public ParsedObject(String json, HashSet<String> skips) {
         this.json = json;
         this.jo = new JSONObject();
-        this.paths = paths;
+        this.skips = skips;
         this.currentKey = "";
         this.els = new Stack();
-        this.skipOrInclude = skipOrInclude;
         try {
             parse();
         } catch (IOException e) {
@@ -54,21 +49,17 @@ public class ParsedObject {
 
     private boolean shouldSkip(String key) {
         boolean out = false;
-        if (skipOrInclude == SKIP) {
-            if (paths.isEmpty()) {
-                return out;
+        if (skips.isEmpty()) {
+            return out;
+        }
+        if (currentKey.length() > 0) { // currentKey has something like abc.def so put .key on the end and check skips
+            if (skips.contains(currentKey + "." + key)) {
+                out = true;
             }
-            if (currentKey.length() > 0) { // currentKey has something like abc.def so put .key on the end and check skips
-                if (paths.contains(currentKey + "." + key)) {
-                    out = true;
-                }
-            } else { // currentKey is blank for top level elements
-                if (paths.contains(key)) {
-                    out = true;
-                }
+        } else { // currentKey is blank for top level elements
+            if (skips.contains(key)) {
+                out = true;
             }
-        } else if (skipOrInclude == INCLUDE) {
-
         }
         return out;
     }
