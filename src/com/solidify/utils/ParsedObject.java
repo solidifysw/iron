@@ -17,14 +17,30 @@ import java.util.Stack;
 public class ParsedObject {
     private String json;
     private JSONObject jo;
-    private HashSet<String> skips;
+    private HashSet<String> paths;
     private String currentKey;
+    private Stack<Object> els;
+    private int skipOrInclude;
+    public static final int SKIP = 1;
+    public static final int INCLUDE = 2;
 
-    public ParsedObject(String json, HashSet<String> skips) {
+    /**
+     * Stream parses the json input string into a JSONObject accessible with the get method.  Accepts a HashSet of Strings
+     * representing the elements in the json string to exclude from the JSONObject result.  Use dot notation.  For example:
+     * json = {"a":"abc", "b":"def", "c":{"d":"ghi","e":["x","y"]}}
+     * by including b and c.e in the skips HashSet the resultant JSONObject would contain:
+     * {"a":"abc", "c":{"d":"ghi"}}
+     * @param json String of json to stream parse
+     * @param paths list of dot notattion strings of elements to skip when parsing the input json
+     * @param skipOrInclude indicates if the paths are to be skipped or included
+     */
+    public ParsedObject(String json, HashSet<String> paths, int skipOrInclude) {
         this.json = json;
         this.jo = new JSONObject();
-        this.skips = skips;
+        this.paths = paths;
         this.currentKey = "";
+        this.els = new Stack();
+        this.skipOrInclude = skipOrInclude;
         try {
             parse();
         } catch (IOException e) {
@@ -36,6 +52,50 @@ public class ParsedObject {
         return jo;
     }
 
+    private boolean shouldSkip(String key) {
+        boolean out = false;
+        if (skipOrInclude == SKIP) {
+            if (paths.isEmpty()) {
+                return out;
+            }
+            if (currentKey.length() > 0) { // currentKey has something like abc.def so put .key on the end and check skips
+                if (paths.contains(currentKey + "." + key)) {
+                    out = true;
+                }
+            } else { // currentKey is blank for top level elements
+                if (paths.contains(key)) {
+                    out = true;
+                }
+            }
+        } else if (skipOrInclude == INCLUDE) {
+
+        }
+        return out;
+    }
+
+    private boolean stackIsString() {
+        if (els.isEmpty()) return false;
+        return els.peek().getClass().equals(String.class);
+    }
+
+    private boolean stackIsJSONObject() {
+        if (els.isEmpty()) return false;
+        return els.peek().getClass().equals(JSONObject.class);
+    }
+
+    private boolean stackIsJSONArray() {
+        if (els.isEmpty()) return false;
+        return els.peek().getClass().equals(JSONArray.class);
+    }
+
+    private void trimCurrentKey() {
+        if (currentKey.length() > 0 && currentKey.contains(".")) {
+            currentKey = currentKey.substring(0,currentKey.lastIndexOf("."));
+        } else {
+            currentKey = "";
+        }
+    }
+
     public void parse() throws IOException {
         if (json == null || "".equals(json)) {
             return;
@@ -45,7 +105,7 @@ public class ParsedObject {
         String field = null;
 
         JsonToken current = null;
-        Stack<Object> els = new Stack();
+
         current = jp.nextToken();
         if (current != JsonToken.START_OBJECT) {
             return;
@@ -56,51 +116,32 @@ public class ParsedObject {
             switch(current) {
                 case FIELD_NAME:
                     String key = jp.getCurrentName();
-                    System.out.println("currentKey: "+currentKey+" key: "+key);
-                    System.out.println("len: "+currentKey.length());
-                    if (!skips.isEmpty() && currentKey.length() > 0) {
-                        if (skips.contains(currentKey+"."+key)) {
-                            System.out.println("skipping1: " + currentKey + "." + key);
-                            //jp.nextToken();
-                            jp.skipChildren();
-                        } else {
-                            els.push(key);
-                        }
-                    } else if (!skips.isEmpty() && skips.contains(key)) {
-                        System.out.println("skipping2: " + key);
-                        //jp.nextToken();
+                    if (shouldSkip(key)) {
                         jp.skipChildren();
                     } else {
                         els.push(key);
                     }
                     break;
                 case START_OBJECT:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         currentKey = "".equals(currentKey) ? (String) els.peek() : currentKey + "." + (String) els.peek();
-                        System.out.println("1: "+currentKey);
                     }
                     els.push(new JSONObject());
                     break;
                 case END_OBJECT:
                     JSONObject tmp = (JSONObject)els.pop();
                     if (!els.isEmpty()) {
-                        if (els.peek().getClass().equals(String.class)) {
-                            if (currentKey.length() > 0 && currentKey.contains(".")) {
-                                currentKey = currentKey.substring(0,currentKey.lastIndexOf("."));
-                                System.out.println(currentKey);
-                            } else if (currentKey.length() > 0) {
-                                currentKey = "";
-                            }
+                        if (stackIsString()) {
+                            trimCurrentKey();
                             field = (String) els.pop();
                             ((JSONObject) els.peek()).put(field, tmp);
-                        } else if (els.peek().getClass().equals(JSONArray.class)) {
+                        } else if (stackIsJSONArray()) {
                             ((JSONArray) els.peek()).put(tmp);
                         }
                     }
                     break;
                 case START_ARRAY:
                     currentKey = "".equals(currentKey) ? (String) els.peek() : currentKey + "." + (String) els.peek();
-                    System.out.println(currentKey);
                     els.push(new JSONArray());
                     break;
                 case END_ARRAY:
@@ -109,56 +150,55 @@ public class ParsedObject {
                         field = (String)els.pop();
                         if (currentKey.length() > 0 && currentKey.contains(".")) {
                             currentKey = currentKey.substring(0,currentKey.lastIndexOf("."));
-                            System.out.println(currentKey);
                         }
                         ((JSONObject)els.peek()).put(field,ja);
                     }
                     break;
                 case VALUE_STRING:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         field = (String) els.pop();
                         ((JSONObject) els.peek()).put(field, jp.getValueAsString());
-                    } else if (els.peek().getClass().equals(JSONArray.class)) {
+                    } else if (stackIsJSONArray()) {
                         ((JSONArray)els.peek()).put(jp.getValueAsString());
                     }
                     break;
                 case VALUE_FALSE:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         field = (String)els.pop();
                         ((JSONObject)els.peek()).put(field,false);
-                    } else if (els.peek().getClass().equals(JSONArray.class)) {
+                    } else if (stackIsJSONArray()) {
                         ((JSONArray)els.peek()).put(false);
                     }
                     break;
                 case VALUE_TRUE:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         field = (String)els.pop();
                         ((JSONObject)els.peek()).put(field, true);
-                    } else if (els.peek().getClass().equals(JSONArray.class)) {
+                    } else if (stackIsJSONArray()) {
                         ((JSONArray)els.peek()).put(true);
                     }
                     break;
                 case VALUE_NULL:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         field = (String)els.pop();
                         ((JSONObject)els.peek()).put(field, JSONObject.NULL);
-                    } else if (els.peek().getClass().equals(JSONArray.class)) {
+                    } else if (stackIsJSONArray()) {
                         ((JSONArray)els.peek()).put(JSONObject.NULL);
                     }
                     break;
                 case VALUE_NUMBER_FLOAT:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         field = (String)els.pop();
                         ((JSONObject)els.peek()).put(field, jp.getFloatValue());
-                    } else if (els.peek().getClass().equals(JSONArray.class)) {
+                    } else if (stackIsJSONArray()) {
                         ((JSONArray)els.peek()).put(jp.getFloatValue());
                     }
                     break;
                 case VALUE_NUMBER_INT:
-                    if (els.peek().getClass().equals(String.class)) {
+                    if (stackIsString()) {
                         field = (String)els.pop();
                         ((JSONObject)els.peek()).put(field, jp.getLongValue());
-                    } else if (els.peek().getClass().equals(JSONArray.class)) {
+                    } else if (stackIsJSONArray()) {
                         ((JSONArray)els.peek()).put(jp.getLongValue());
                     }
                     break;
