@@ -1,22 +1,18 @@
 package com.solidify.dao;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.solidify.admin.reports.Utils;
+import com.solidify.utils.ParsedObject;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.sql.*;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * Created by jrobins on 2/24/15.
+ * Created by jennifermac on 2/25/15.
  */
 public class SincOrders {
+
     private ArrayList<JSONObject> orders;
     private Connection con;
     private boolean manageConnection;
@@ -30,7 +26,7 @@ public class SincOrders {
     }
 
     public SincOrders(String groupId) throws Exception {
-        this(groupId,null);
+        this(groupId, null);
     }
 
     private void load() throws Exception {
@@ -40,6 +36,21 @@ public class SincOrders {
         ResultSet oIds = null;
         Statement stmt1 = null;
         ResultSet orderRes = null;
+        HashSet<String> skips = new HashSet<>();
+        skips.add("member"); skips.add("enrollment");
+        skips.add("keepCoverage");
+        skips.add("prePostTaxSelections");
+        skips.add("imported");
+        skips.add("current");
+        skips.add("data.signature");
+        skips.add("data.member.tags");
+        skips.add("data.member.rehireEligible");
+        skips.add("data.member.terminationNotes");
+        skips.add("data.member.payrollId");
+        skips.add("data.member.carrierData");
+        skips.add("data.member.personal.dependents");
+        skips.add("data.member.personal.emergencyContacts");
+        skips.add("data.member.personal.beneficiaries");
 
         HashSet<String> orderIds = new HashSet<String>();
         JSONArray groupOrders = new JSONArray();
@@ -57,40 +68,37 @@ public class SincOrders {
         }
         oIds.close();
         idSelect.close();
-
         // query each order and parse the data blob for pertinent info
+        String json = null;
         int cnt = 0;
+        sql = "SELECT data FROM sinc.orders WHERE id = ?";
+        select = con.prepareStatement(sql);
         for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
             String orderId = it.next();
-            stmt1 = con.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY,java.sql.ResultSet.CONCUR_READ_ONLY);
-            stmt1.setFetchSize(Integer.MIN_VALUE);
-            orderRes = stmt1.executeQuery("SELECT data,memberId FROM sinc.orders WHERE id ='"+orderId+"'");
-            byte[] bdata = null;
+            select.setString(1,orderId);
+            orderRes = select.executeQuery();
             if (orderRes.next()) {
                 cnt++;
-                Blob b = orderRes.getBlob("data");
-                bdata = b.getBytes(1, (int) b.length());
+                json = orderRes.getString("data");
             }
             orderRes.close();
-            stmt1.close();
-            JSONObject slimOrder = null;
-            try {
-                slimOrder = buildObject(bdata);
-                if (slimOrder != null && slimOrder.get("testUser").equals("NO")) {
-                    JSONObject enrollment = parseEnrollment(new String(bdata,"UTF-8"));
-                    JSONArray classes = enrollment.getJSONArray("classes");
-                    String cls = getClassVal(classes, slimOrder.getString("memberId"), con);
-                    if (cls != null) {
-                        slimOrder.put("class",cls);
-                    }
-                    groupOrders.put(slimOrder);
-                }
-            } catch (Exception e) {
-                String tmp = new String(bdata);
-                e.printStackTrace();
-            }
 
+            JSONObject slimOrder = null;
+            ParsedObject po = new ParsedObject(json,skips, ParsedObject.SKIP);
+            slimOrder = po.get();
+
+            if (slimOrder != null && slimOrder.has("data")) {
+                JSONObject data = slimOrder.getJSONObject("data");
+                if (data.has("member")) {
+                    JSONObject member = data.getJSONObject("member");
+                    if (member.has("testUser") && member.getString("testUser").equalsIgnoreCase("no")) {
+                        // populate covs
+                        groupOrders.put(slimOrder);
+                    }
+                }
+            }
         }
+        select.close();
 
         // groupOrders contains the slim versions of the orders for this group
         // Find the latest order for each individual
@@ -99,306 +107,60 @@ public class SincOrders {
         }
     }
 
-    public static JSONObject buildObject(byte[] blob) throws IOException, SQLException {
-        JSONObject order = new JSONObject();
-        JsonFactory factory = new JsonFactory();
-        JsonParser jp = factory.createParser(new String(blob, "UTF-8"));
-        HashSet<String> skip = new HashSet<String>();
-        //skip.add("declineReasons");
-        skip.add("keepCoverage"); skip.add("disclosureQuestions"); skip.add("prePostTaxSelections"); skip.add("enrollment"); skip.add("imported"); skip.add("current"); skip.add("usedDefinedContributions");
-        skip.add("lifeChangeTypes"); skip.add("member");
-
-        JsonToken current = null;
-        HashMap<String,String> declineReasons = null;
-        String field = null;
-        // start of json {
-
-        current = jp.nextToken();
-        if (current != JsonToken.START_OBJECT) {
-            return null;
-        }
-        while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-            if (current == JsonToken.FIELD_NAME) {
-                field = jp.getCurrentName();
-                if ("data".equals(field)) {
-                    current = jp.nextToken();
-                    buildCovs(order,jp);
-                } else if ("dateSaved".equals(field)) {
-                    //log.info("found dateSaved");
-                    jp.nextToken();
-                    Long dateSaved = jp.getValueAsLong();
-                    order.put("dateSaved", dateSaved);
-                    SimpleDateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-                    long dateSavedL = dateSaved.longValue();
-                    java.util.Date dt = new java.util.Date(dateSavedL);
-                    String date = df.format(dt);
-                    order.put("date",date);
-                } else if (skip.contains(field)) {
-                    jp.nextToken();
-                    jp.skipChildren();
-                } else if ("declineReasons".equals(field)) {
-                    declineReasons = getDeclineReasons(order,jp);
-                } else if ("isBatchable".equals(field)) {
-                    jp.nextToken();
-                    order.put("isBatchable",jp.getValueAsBoolean());
-                } else if ("questionAnswers".equals(field)) {
-                    getQuestionAnswers(order,jp);
-                } else if ("userName".equals(field)) {
-                    jp.nextToken();
-                    order.put("enroller",jp.getValueAsString());
-                } else if ("id".equals(field)) {
-                    jp.nextToken();
-                    order.put("orderId",jp.getValueAsString());
-                }
-            }
-        }
-
-        if (declineReasons != null && !declineReasons.isEmpty()) {
-            JSONArray covs = (JSONArray) order.get("covs");
-            for (int i = 0; i < covs.length(); i++) {
-                JSONObject cov = (JSONObject) covs.get(i);
-                // log.info(cov.toString());
-                String covUuid = (String) cov.get("splitId");
-                if (declineReasons.containsKey(covUuid)) {
-                    cov.put("declineReason", declineReasons.get(covUuid));
-                }
-            }
-        }
-
-        return order;
-    }
-
-    private static void buildCovs(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
-        String field;
-        JsonToken current = null;
-        JSONObject cov = null;
-        JSONObject premium = null;
+    public void populateCovs(JSONObject slimOrder) {
+        HashSet<String> ignores = new HashSet<>();
+        ignores.add("member");
+        ignores.add("beneficiaries");
+        ignores.add("dependents");
+        ignores.add("emergencyContacts");
         JSONArray covs = new JSONArray();
-        HashSet<String> skips = new HashSet<String>();
-        skips.add("emergencyContacts"); skips.add("signature"); skips.add("listBillAdjustments"); skips.add("carrierElectionData");
-        HashSet<String> saves = new HashSet<String>();
-        saves.add("productId"); saves.add("planName"); saves.add("startDate"); saves.add("benefit"); saves.add("endDate"); saves.add("type"); saves.add("subType"); saves.add("deduction"); saves.add("totalYearly"); saves.add("electionTier"); saves.add("splitId");
-        saves.add("benefitLevel");
 
-        while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-            if (current == JsonToken.FIELD_NAME) {
-                field = jp.getCurrentName();
-                //log.info("field: "+field);
-                if (field.equals("member")) {
-                    buildMember(order, jp);
-                } else if (skips.contains(field)) {
-                    // skip all this crap
-                    current = jp.nextToken();
-                    if (current == JsonToken.START_ARRAY || current == JsonToken.START_OBJECT) {
-                        jp.skipChildren();
-                    }
-                } else if (field.equals("dependents")) {
-                    buildDependents(order, jp);
-                } else if ("beneficiaries".equals(field)) {
-                    buildBeneficiaries(order,jp);
-                }  else {
-                    // these are coverages
-                    cov = new JSONObject();
-                    JSONArray prems;
-                    cov.put("id", field);
-                    jp.nextToken(); // open tag uuid : {
-                    while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                        if (current == JsonToken.FIELD_NAME) {
-                            field = jp.getCurrentName();
-                            if (saves.contains(field)) {
-                                current = jp.nextToken();
-                                cov.put(field, jp.getValueAsString());
-                            } else if ("premiums".equals(field)) {
-                                prems = new JSONArray();
-                                while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
-                                    premium = new JSONObject();
-                                    while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                                        if (current == JsonToken.FIELD_NAME) {
-                                            field = jp.getCurrentName();
-                                            current = jp.nextToken();
-                                            String fVal = jp.getValueAsString();
-                                            premium.put(field, fVal);
-                                        }
-                                    }
-                                    prems.put(premium);
-                                }
-                                if (prems.length() > 0) {
-                                    cov.put("premiums",prems);
-                                }
-                            } else if ("beneficiaries".equals(field)) {
-                                JSONArray bens = new JSONArray();
-                                while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
-                                    JSONObject ben = new JSONObject();
-                                    current = jp.nextToken();
-                                    if (current == JsonToken.END_ARRAY) {
-                                        break;
-                                    }
-                                    while (current != JsonToken.END_OBJECT) {
-                                        if (current == JsonToken.FIELD_NAME) {
-                                            field = jp.getCurrentName();
-                                            current = jp.nextToken();
-                                            if (current.isNumeric()) {
-                                                ben.put(field, jp.getValueAsInt());
-                                            } else {
-                                                ben.put(field, jp.getValueAsString());
-                                            }
-                                        }
-                                        current = jp.nextToken();
-                                    }
-                                    bens.put(ben);
-                                }
-                                if (bens.length()>0) {
-                                    cov.put("beneficiaries", bens);
-                                }
-                            } else if (field.equals("coveredDependents")) {
-                                JSONArray coveredDeps = new JSONArray();
-                                while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
-                                    if (current != JsonToken.START_ARRAY) {
-                                        coveredDeps.put(jp.getValueAsString());
-                                    }
-                                }
-                                cov.put("coveredDependents",coveredDeps);
-                            } else if (skips.contains(field)) {
-                                current = jp.nextToken();
-                                if (current == JsonToken.START_ARRAY || current == JsonToken.START_OBJECT) {
-                                    jp.skipChildren();
-                                }
-                            }
-                        }
-                    }
+        if (slimOrder.has("data")) {
+            JSONObject data = slimOrder.getJSONObject("data");
+
+            for (Iterator<Object> it = data.keys(); it.hasNext();) {
+                String key = (String)it.next();
+                if (!ignores.contains(key)) {
+                    JSONObject cov = data.getJSONObject(key);
                     covs.put(cov);
                 }
             }
         }
-        order.put("covs", covs);
+        slimOrder.put("covs",covs);
     }
 
-    public static void buildBeneficiaries(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
-        JsonToken current = null;
-        String field = null;
-        JSONArray bens = new JSONArray();
-        current = jp.nextToken();
-        if (current == JsonToken.START_ARRAY) {
-            while (current != JsonToken.END_ARRAY) {
-                current = jp.nextToken();
-                if (current == JsonToken.START_OBJECT) {
-                    JSONObject ben = new JSONObject();
-                    while (current != JsonToken.END_OBJECT) {
-                        current = jp.nextToken();
-                        if (current == JsonToken.FIELD_NAME) {
-                            field = jp.getCurrentName();
-                            jp.nextToken();
-                            ben.put(field, jp.getValueAsString());
-                        }
-                    }
-                    bens.put(ben);
-                }
-            }
-        }
-        order.put("beneficiaries",bens);
-    }
+    /*
+     * Finds the class for this memberId.  enrollment.classes may be the old style that has the list of memberId's in
+     * the members object inside the classes array. old style classes:[{...},{...}]
+     * new style classes is an array of classIds.  new style classes:['a','b'...] Have to query the classes table to
+     * find the members.
+     * @param classes
+     * @param memberId
+     * @param con
+     * @return
+     * @throws SQLException
 
-    public static void buildDependents(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
-        JsonToken current = null;
-        String field = null;
-        JSONArray deps = new JSONArray();
-        current = jp.nextToken();
-        if (current == JsonToken.START_ARRAY) {
-            while (current != JsonToken.END_ARRAY) {
-                current = jp.nextToken();
-                if (current == JsonToken.START_OBJECT) {
-                    JSONObject dep = new JSONObject();
-                    while (current != JsonToken.END_OBJECT) {
-                        current = jp.nextToken();
-                        if (current == JsonToken.FIELD_NAME) {
-                            field = jp.getCurrentName();
-                            if (field.equals("deleted") && !jp.getValueAsBoolean()) {
-                                dep.put("deleted", false);
-                            } else if (field.equals("deleted")) {
-                                dep.put("deleted", true);
-                            } else {
-                                jp.nextToken();
-                                dep.put(field, jp.getValueAsString());
-                            }
-                        }
-                    }
-                    deps.put(dep);
-                }
-            }
-        }
-        if (order.has("dependents")) {
-            JSONArray dps = order.getJSONArray("dependents");
-            if (dps.length() == 0) {
-                order.put("dependents", deps);
-            }
-        } else {
-            order.put("dependents", deps);
-        }
-    }
-
-    /**
-     * Parses out the member information from the order data blob and places relevant data into a slimmed down order blob.
-     * member: {employeeId:"123", dependents:[],...personal:{firstName:"John",dateOfBirth:"03/10/1962",..}}
-     * @param order the object to populate
-     * @param jp
-     * @throws JsonParseException
-     * @throws IOException
-     */
-    private static void buildMember(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
-        String field = null;
-        JsonToken current = null;
-        HashSet<String> info = new HashSet();
-        info.add("occupation"); info.add("locationCode"); info.add("locationDescription"); info.add("occupation"); info.add("status"); info.add("deductionsPerYear");
-        info.add("department"); info.add("dateOfHire"); info.add("hoursPerWeek"); info.add("annualSalary"); info.add("employeeId"); info.add("id");
-        HashSet<String> personal = new HashSet();
-        personal.add("firstName"); personal.add("lastName"); personal.add("dateOfBirth"); personal.add("ssn"); personal.add("gender");
-        personal.add("address1"); personal.add("address2"); personal.add("city"); personal.add("state"); personal.add("zip"); personal.add("phone");
-        personal.add("email");
-        HashSet<String> skips = new HashSet();
-        skips.add("emergencyContacts"); skips.add("beneficiaries"); skips.add("dependents");
-        JSONArray deps = new JSONArray();
-
-        if (jp.nextToken() == JsonToken.START_OBJECT) {
-            while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                if(current == JsonToken.FIELD_NAME) {
-                    field = jp.getCurrentName();
-                    if (skips.contains(field)) {
-                        jp.nextToken();
-                        jp.skipChildren();
-                    } else if (field.equals("personal")) {
-                        while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                            if (current == JsonToken.FIELD_NAME) {
-                                field = jp.getCurrentName();
-                                if (personal.contains(field)) {
-                                    current = jp.nextToken();
-                                    order.put(field, jp.getValueAsString());
-                                } else if (skips.contains(field)) {
-                                    current = jp.nextToken();
-                                    if (current == JsonToken.START_ARRAY || current == JsonToken.START_OBJECT) {
-                                        jp.skipChildren();
-                                    }
-                                }
-                            }
-                        }
-                    } else if ("tags".equals(field) || "newHire".equals(field)) {
-                        current = jp.nextToken();
-                        if (current == JsonToken.START_ARRAY || current == JsonToken.START_OBJECT) {
-                            jp.skipChildren();
-                        }
-                    } else if ("testUser".equals(field)) {
-                        current = jp.nextToken();
-                        order.put("testUser", jp.getValueAsString());
-                    }  else if (info.contains(field)) {
-                        current = jp.nextToken();
-                        if ("id".equals(field)) {
-                            order.put("memberId",jp.getValueAsString());
-                        } else {
-                            order.put(field, jp.getValueAsString());
-                        }
+    public String processClasses(JSONArray classes, String memberId, Connection con) throws SQLException {
+        String out = null;
+        boolean found = false;
+        for (int i = 0; i < classes.length(); i++) {
+            if (found)  break;
+            Object tmp = classes.get(i);
+            if (tmp.getClass().equals(String.class)) {
+                out = getClassVal(classes,memberId,con);
+            } else if (tmp.getClass().equals(JSONObject.class)) {
+                JSONObject jo = classes.getJSONObject(i);
+                JSONArray mems = jo.getJSONArray("members");
+                for (int j=0; j<mems.length(); j++) {
+                    if (mems.getString(i).equals(memberId)) {
+                        out = jo.getString("id");
+                        found = true;
+                        break;
                     }
                 }
             }
         }
+        return out;
     }
 
     public String getClassVal(JSONArray classes, String memberId, Connection con) throws SQLException {
@@ -435,108 +197,7 @@ public class SincOrders {
         select.close();
         return classVal;
     }
-
-    private static void getQuestionAnswers(JSONObject order, JsonParser jp)  throws JsonParseException, IOException {
-        // questionAnswers: { weight-ee: {id:xxx,questionText:xxx...},weight-sp:...}
-        JSONObject answers = new JSONObject();
-        JsonToken current = null;
-        String field = null;
-        String objectName = null;
-        if ((current = jp.nextToken()) == JsonToken.START_OBJECT) {
-            while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                if (current == JsonToken.FIELD_NAME) {
-                    objectName = jp.getCurrentName();
-                    JSONObject jo = new JSONObject();
-                    while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                        if (current == JsonToken.FIELD_NAME) {
-                            field = jp.getCurrentName();
-                            jp.nextToken();
-                            try {
-                                jo.put(field, jp.getValueAsString());
-                            } catch (Exception e) {
-                                jo.put(field, jp.getValueAsInt());
-                            }
-                        }
-                    }
-                    answers.put(objectName,jo);
-                }
-            }
-        }
-        Set set = answers.keySet();
-        if (!set.isEmpty()) {
-            order.put("questionAnswers", answers);
-        }
-    }
-
-    private static HashMap<String,String> getDeclineReasons(JSONObject order, JsonParser jp) throws JsonParseException, IOException {
-        // declineReasons: {UUID1:reason1,UUID2:reason2...}
-        HashMap<String,String> declineReasons = new HashMap<String,String>();
-        if (jp.nextToken() == JsonToken.START_OBJECT) {
-            while (jp.nextToken() != JsonToken.END_OBJECT) {
-                String covUuid = jp.getCurrentName();
-                jp.nextToken();
-                String declineReason = jp.getValueAsString();
-                declineReasons.put(covUuid, declineReason);
-            }
-        }
-        return declineReasons;
-    }
-
-    public static JSONObject parseEnrollment(String json) throws IOException {
-        JSONObject out = new JSONObject();
-        JsonFactory factory = new JsonFactory();
-        JsonParser jp = factory.createParser(json);
-        JsonToken current = jp.nextToken();
-        String field = null;
-        HashSet<String> skip = new HashSet<String>();
-        skip.add("packages"); skip.add("employer"); skip.add("loginScheme");
-        JSONArray productConfigs = new JSONArray();
-        JSONArray classes = new JSONArray();
-
-        // make sure there is a {
-        if (current != JsonToken.START_OBJECT) {
-            return null;
-        }
-
-        while((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-            if (current == JsonToken.FIELD_NAME) {
-                field = jp.getCurrentName();
-                if (field.equals("enrollment")) {
-                    while ((current = jp.nextToken()) != JsonToken.END_OBJECT) {
-                        if (current == JsonToken.FIELD_NAME) {
-                            field = jp.getCurrentName();
-                            if (field.equals("classes")) {
-                                current = jp.nextToken();
-                                if (current == JsonToken.START_ARRAY) {
-                                    while((current = jp.nextToken()) != JsonToken.END_ARRAY) {
-                                        classes.put(jp.getValueAsString());
-                                    }
-                                }
-                            } else if (field.equals("productConfigs")) {
-                                current = jp.nextToken();
-                                if (current == JsonToken.START_ARRAY) {
-                                    while ((current = jp.nextToken()) != JsonToken.END_ARRAY) {
-                                        productConfigs.put(jp.getValueAsString());
-                                    }
-                                }
-                            } else {
-                                current = jp.nextToken();
-                                if (current == JsonToken.START_OBJECT || current == JsonToken.START_ARRAY) {
-                                    jp.skipChildren();
-                                }
-                            }
-                        }
-                    }
-                } else if ((current = jp.nextToken()) == JsonToken.START_OBJECT || current == JsonToken.START_ARRAY) {
-                    jp.skipChildren();
-                }
-            }
-        }
-        out .put("classes",classes);
-        out.put("productConfigs",productConfigs);
-        return out;
-    }
-
+     */
     public static ArrayList<JSONObject> findLatestOrders(JSONArray groupOrders) {
         ArrayList<JSONObject> out = new ArrayList<JSONObject>();
         if (groupOrders.length() > 0) {
@@ -574,20 +235,27 @@ public class SincOrders {
      * @return
      */
     public static boolean sameMember(JSONObject obj1, JSONObject obj2) {
-        String ssn1 = obj1.getString("ssn");
+        JSONObject data1 = obj1.getJSONObject("data");
+        JSONObject member1 = data1.getJSONObject("member");
+        JSONObject personal1 = member1.getJSONObject("personal");
+
+        String ssn1 = personal1.getString("ssn");
         if (ssn1 == null) {
             ssn1 = "";
         }
-        String dob1 = obj1.getString("dateOfBirth");
+        String dob1 = personal1.getString("dateOfBirth");
         if (dob1 == null) {
             dob1 = "";
         }
 
-        String ssn2 = obj2.getString("ssn");
+        JSONObject data2 = obj2.getJSONObject("data");
+        JSONObject member2 = data2.getJSONObject("member");
+        JSONObject personal2 = member2.getJSONObject("personal");
+        String ssn2 = personal2.getString("ssn");
         if (ssn2 == null) {
             ssn2 = "";
         }
-        String dob2 = obj2.getString("dateOfBirth");
+        String dob2 = personal2.getString("dateOfBirth");
         if (dob2 == null) {
             dob2 = "";
         }
@@ -606,8 +274,8 @@ public class SincOrders {
      * @return the later dateSaved of the 2 objects
      */
     public static JSONObject laterOf(JSONObject obj1, JSONObject obj2) {
-        Long saved1 = (Long)obj1.get("dateSaved");
-        Long saved2 = (Long)obj2.get("dateSaved");
+        Long saved1 = (Long)obj1.getLong("dateSaved");
+        Long saved2 = (Long)obj2.getLong("dateSaved");
         java.util.Date dt1 = new java.util.Date(saved1);
         java.util.Date dt2 = new java.util.Date(saved2);
         Calendar cal1 = Calendar.getInstance();

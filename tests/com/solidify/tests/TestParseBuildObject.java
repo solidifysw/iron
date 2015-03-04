@@ -1,10 +1,8 @@
 package com.solidify.tests;
 
 import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.solidify.admin.reports.Utils;
-import com.solidify.dao.SincOrders;
+import com.solidify.dao.SincOrdersOrig;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -64,7 +62,7 @@ public class TestParseBuildObject extends BaseTest {
         obj.put("enrollment",emptyObject);
 
         try {
-            JSONObject jo = SincOrders.buildObject(obj.toString().getBytes());
+            JSONObject jo = SincOrdersOrig.buildObject(obj.toString().getBytes());
             //System.out.println(jo.toString());
             assertTrue(jo.has("beneficiaries"));
             JSONArray ja = jo.getJSONArray("beneficiaries");

@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.solidify.admin.reports.Utils;
+import com.solidify.utils.ParsedObject;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.*;
+import java.util.HashSet;
 
 /**
  * Created by jrobins on 2/18/15.
@@ -32,19 +34,20 @@ public class SincSignature {
             if (manageConnection) {
                 con = Utils.getConnection();
             }
-            Statement stmt1 = con.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
-            stmt1.setFetchSize(Integer.MIN_VALUE);
-            ResultSet rs = stmt1.executeQuery("SELECT data FROM sinc.orders WHERE id ='" + orderId + "'");
+            PreparedStatement select = con.prepareStatement("SELECT data FROM sinc.orders WHERE id = ?");
+            select.setString(1,orderId);
+            ResultSet rs = select.executeQuery();
             String rawJson = null;
             if (rs.next()) {
-                Blob b = rs.getBlob("data");
-                byte[] bdata = b.getBytes(1, (int) b.length());
-                rawJson = new String(bdata, "UTF-8");
+                rawJson = rs.getString("data");
             }
             rs.close();
-            stmt1.close();
+            select.close();
             if (rawJson != null) {
-                this.json = parseSignature(rawJson);
+                HashSet<String> incs = new HashSet<>();
+                incs.add("data.signature");
+                ParsedObject po = new ParsedObject(rawJson,incs,ParsedObject.INCLUDE);
+                this.json = po.get();
             }
 
         } finally {
@@ -52,6 +55,7 @@ public class SincSignature {
         }
     }
 
+    /*
     public static JSONObject parseSignature(String rawJson) throws IOException {
         JSONObject out = new JSONObject();
         JsonFactory factory = new JsonFactory();
@@ -99,6 +103,7 @@ public class SincSignature {
         out.put("signature",sig);
         return out;
     }
+    */
 
     public JSONObject getSignatureJson() {
         return json;

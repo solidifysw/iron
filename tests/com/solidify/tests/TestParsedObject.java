@@ -5,16 +5,20 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashSet;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
  * Created by jrobins on 2/24/15.
  */
-public class TestParsedObject {
+public class TestParsedObject extends BaseTest {
     @Test
-    public void testParsedObject() {
+    public void testParsedObjectWithSkips() {
         long num = 123456789123456789l;
 
        /* JSONObject jo = new JSONObject();
@@ -36,6 +40,8 @@ public class TestParsedObject {
         ParsedObject po = new ParsedObject(jo.toString());
         JSONObject obj = po.get();
         */
+
+        /*
         JSONObject obj = new JSONObject();
         JSONObject emptyObject = new JSONObject();
         obj.put("member",emptyObject);
@@ -74,14 +80,141 @@ public class TestParsedObject {
 
         obj.put("data",data);
         obj.put("enrollment",emptyObject);
+        System.out.println(obj.toString());
+        */
 
+        PreparedStatement select = null;
+        ResultSet rs = null;
+        String json = null;
+        String sql = "SELECT data FROM sinc.orders WHERE id = ?";
+        try {
+            select = con.prepareStatement(sql);
+            select.setString(1, "d03701ae-58de-496e-bc2c-44c7581926fd");
+            rs = select.executeQuery();
+            if (rs.next()) {
+                json = rs.getString("data");
+                //System.out.println(json);
+            }
+            rs.close();
+            select.close();
+            con.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         HashSet<String> skips = new HashSet();
-        skips.add("data.member.personal");
         skips.add("enrollment");
         skips.add("member");
-        ParsedObject po = new ParsedObject(obj.toString(), skips);
+        skips.add("data.signature");
+        skips.add("attended");
+        skips.add("prePostTaxSelections");
+        skips.add("imported");
+        skips.add("current");
+        skips.add("data.member.personal.dependents");
+        skips.add("data.member.personal.emergencyContacts");
+        skips.add("data.member.personal.beneficiaries");
+
+        ParsedObject po = new ParsedObject(json, skips, ParsedObject.SKIP);
         JSONObject testObj = po.get();
-        System.out.println(testObj.toString());
-        assertTrue(obj.has("member"));
+        //System.out.println(testObj.toString());
+        assertFalse(testObj.has("member"));
+        assertFalse(testObj.has("enrollment"));
+        assertFalse(testObj.has("attended"));
+        assertFalse(testObj.has("imported"));
+
+        JSONObject data = testObj.getJSONObject("data");
+        JSONObject member = data.getJSONObject("member");
+        JSONObject personal = member.getJSONObject("personal");
+        assertFalse(personal.has("dependents"));
+        assertFalse(personal.has("emergencyContacts"));
+        assertFalse(personal.has("beneficiaries"));
+
+        HashSet<String> incs = new HashSet<>();
+        incs.add("data.member.personal");
+        incs.add("enrollment");
+        po = new ParsedObject(json,incs,ParsedObject.INCLUDE);
+        testObj = po.get();
+        //System.out.println(testObj.toString());
+        assertTrue(testObj.has("enrollment"));
+        assertTrue(testObj.has("data"));
+
+        data = testObj.getJSONObject("data");
+        assertTrue(data.has("member"));
+
+        member = data.getJSONObject("member");
+        assertFalse(member.has("id"));
+
+        personal = member.getJSONObject("personal");
+        assertTrue(personal.has("firstName"));
+    }
+
+    @Test
+    public void testParseObjectsWithIncludes() {
+        PreparedStatement select = null;
+        ResultSet rs = null;
+        String json = null;
+        String sql = "SELECT data FROM sinc.orders WHERE id = ?";
+        try {
+            select = con.prepareStatement(sql);
+            select.setString(1, "d03701ae-58de-496e-bc2c-44c7581926fd");
+            rs = select.executeQuery();
+            if (rs.next()) {
+                json = rs.getString("data");
+                //System.out.println(json);
+            }
+            rs.close();
+            select.close();
+            con.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        HashSet<String> incs = new HashSet<>();
+        incs.add("data.member.personal");
+        incs.add("enrollment");
+        ParsedObject po = new ParsedObject(json,incs,ParsedObject.INCLUDE);
+        JSONObject testObj = po.get();
+        //System.out.println(testObj.toString());
+        assertTrue(testObj.has("enrollment"));
+        assertTrue(testObj.has("data"));
+
+        JSONObject data = testObj.getJSONObject("data");
+        assertTrue(data.has("member"));
+
+        JSONObject member = data.getJSONObject("member");
+        assertFalse(member.has("id"));
+
+        JSONObject personal = member.getJSONObject("personal");
+        assertTrue(personal.has("firstName"));
+
+    }
+
+    @Test
+    public void testParsedSignature() {
+        PreparedStatement select = null;
+        ResultSet rs = null;
+        String json = null;
+        String sql = "SELECT data FROM sinc.orders WHERE id = ?";
+        try {
+            select = con.prepareStatement(sql);
+            select.setString(1, "d03701ae-58de-496e-bc2c-44c7581926fd");
+            rs = select.executeQuery();
+            if (rs.next()) {
+                json = rs.getString("data");
+                //System.out.println(json);
+            }
+            rs.close();
+            select.close();
+            con.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        HashSet<String> incs = new HashSet<>();
+        incs.add("data.signature");
+
+        ParsedObject po = new ParsedObject(json,incs, ParsedObject.INCLUDE);
+        JSONObject obj = po.get();
+        //System.out.println(obj.toString());
+        assertTrue(obj.has("data"));
+        JSONObject data = obj.getJSONObject("data");
+        assertTrue(data.has("signature"));
     }
 }

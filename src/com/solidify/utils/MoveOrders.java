@@ -165,18 +165,25 @@ public class MoveOrders extends HttpServlet {
                     }
                 }
             }
-            SincOrders sincOrders = new SincOrders(groupUUID,con);
-            List<JSONObject> apps = sincOrders.getOrders();
+            SincOrders SincOrders = new SincOrders(groupUUID,con);
+            List<JSONObject> apps = SincOrders.getOrders();
             //List<JSONObject> apps = Utils.getLatestOrdersForGroup(groupUUID, con);
 
             for (JSONObject app : apps) {  // apps from sinc
+                JSONObject data = app.getJSONObject("data");
+                JSONObject member = data.getJSONObject("member");
+                JSONObject personal = member.getJSONObject("personal");
+                if (member.has("testUser") && member.getString("testUser").equalsIgnoreCase("yes")) {
+                    continue;
+                }
                 //log.info(app.toString());
                 HashMap<String, Person> dependents = new HashMap(); // queue dependents for writing coverages after they have been added to db
-                Employee ee = new Employee(app.getString("firstName"), app.getString("lastName"), app.getString("ssn"),app.getString("dateOfBirth"), app.getString("gender"),app.getString("dateOfHire"),app.getString("class"),
-                        app.getString("occupation"),app.getString("employeeId"),app.getString("locationCode"),app.getString("locationDescription"),app.getString("status"),
-                        app.getString("department"),app.getInt("hoursPerWeek"),app.getInt("deductionsPerYear"),app.getString("annualSalary"),saveDate, con);
+                Employee ee = new Employee(personal.getString("firstName"), personal.getString("lastName"), personal.getString("ssn"),personal.getString("dateOfBirth"),
+                        personal.getString("gender"),member.getString("dateOfHire"),app.getString("classId"),
+                        member.getString("occupation"),member.getString("employeeId"),member.getString("locationCode"),member.getString("locationDescription"),member.getString("status"),
+                        member.getString("department"),member.getInt("hoursPerWeek"),member.getInt("deductionsPerYear"),member.getString("annualSalary"),saveDate, con);
 
-                Address addr = new Address("home",app.getString("address1"),app.getString("address2"),app.getString("city"),app.getString("state"),app.getString("zip"),con);
+                Address addr = new Address("home",personal.getString("address1"),personal.getString("address2"),personal.getString("city"),personal.getString("state"),personal.getString("zip"),con);
                 ee.addAddress(addr);
                 ee.save();
 
@@ -186,12 +193,12 @@ public class MoveOrders extends HttpServlet {
                     dateSaved = new Date(app.getLong("dateSaved"));
                 }
                 String enroller = null;
-                if (app.has("enroller")) {
-                    enroller = app.getString("enroller");
+                if (app.has("userName")) {
+                    enroller = app.getString("userName");
                 }
                 String orderId = null;
-                if (app.has("orderId")) {
-                    orderId = app.getString("orderId");
+                if (app.has("id")) {
+                    orderId = app.getString("id");
                 }
                 int appSourceId = 2;
                 if (enroller == null) {
@@ -215,7 +222,7 @@ public class MoveOrders extends HttpServlet {
                 }
 
                 // write dependents
-                JSONArray deps = app.getJSONArray("dependents");
+                JSONArray deps = data.getJSONArray("dependents");
                 for (int i = 0; i < deps.length(); i++) {
                     JSONObject dep = deps.getJSONObject(i);
                     Dependent d = new Dependent(ee, dep.getString("firstName"), dep.getString("lastName"),dep.getString("ssn"),"".equals(dep.getString("dateOfBirth"))?"":dep.getString("dateOfBirth"),dep.getString("gender"),dep.getString("relationship"),saveDate,con);
