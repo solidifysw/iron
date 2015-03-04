@@ -1,6 +1,8 @@
 package com.solidify.tests;
 
+import com.solidify.utils.Include;
 import com.solidify.utils.ParsedObject;
+import com.solidify.utils.Skip;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -113,7 +115,7 @@ public class TestParsedObject extends BaseTest {
         skips.add("data.member.personal.emergencyContacts");
         skips.add("data.member.personal.beneficiaries");
 
-        ParsedObject po = new ParsedObject(json, skips, ParsedObject.SKIP);
+        ParsedObject po = new ParsedObject(json, skips, new Skip());
         JSONObject testObj = po.get();
         //System.out.println(testObj.toString());
         assertFalse(testObj.has("member"));
@@ -127,24 +129,6 @@ public class TestParsedObject extends BaseTest {
         assertFalse(personal.has("dependents"));
         assertFalse(personal.has("emergencyContacts"));
         assertFalse(personal.has("beneficiaries"));
-
-        HashSet<String> incs = new HashSet<>();
-        incs.add("data.member.personal");
-        incs.add("enrollment");
-        po = new ParsedObject(json,incs,ParsedObject.INCLUDE);
-        testObj = po.get();
-        //System.out.println(testObj.toString());
-        assertTrue(testObj.has("enrollment"));
-        assertTrue(testObj.has("data"));
-
-        data = testObj.getJSONObject("data");
-        assertTrue(data.has("member"));
-
-        member = data.getJSONObject("member");
-        assertFalse(member.has("id"));
-
-        personal = member.getJSONObject("personal");
-        assertTrue(personal.has("firstName"));
     }
 
     @Test
@@ -170,7 +154,7 @@ public class TestParsedObject extends BaseTest {
         HashSet<String> incs = new HashSet<>();
         incs.add("data.member.personal");
         incs.add("enrollment");
-        ParsedObject po = new ParsedObject(json,incs,ParsedObject.INCLUDE);
+        ParsedObject po = new ParsedObject(json,incs,new Include());
         JSONObject testObj = po.get();
         //System.out.println(testObj.toString());
         assertTrue(testObj.has("enrollment"));
@@ -210,7 +194,7 @@ public class TestParsedObject extends BaseTest {
         HashSet<String> incs = new HashSet<>();
         incs.add("data.signature");
 
-        ParsedObject po = new ParsedObject(json,incs, ParsedObject.INCLUDE);
+        ParsedObject po = new ParsedObject(json,incs, new Include());
         JSONObject obj = po.get();
         //System.out.println(obj.toString());
         assertTrue(obj.has("data"));

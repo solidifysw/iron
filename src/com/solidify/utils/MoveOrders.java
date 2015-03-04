@@ -38,6 +38,7 @@ public class MoveOrders extends HttpServlet {
         try {
             con = DriverManager.getConnection("jdbc:mysql://localhost:3306/FE", connectionProps);
             run(con);
+            System.out.println("Finished moving orders");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -120,7 +121,9 @@ public class MoveOrders extends HttpServlet {
                 if (sincGroup.has("password")) {
                     password = sincGroup.getString("password");
                 }
-                Pkg savePkg = new Pkg(group, openEnrollment.getString("startDate"), openEnrollment.getString("endDate"), pkg.getString("situsState"),deductionsPerYear,login1,login1Label,login2,login2Label,password,con);
+                Pkg savePkg = new Pkg(group, pkg.getString("situsState"),deductionsPerYear,login1,login1Label,login2,login2Label,password,con);
+                EnrollmentDates eDates = new EnrollmentDates(openEnrollment.getString("startDate"), openEnrollment.getString("startDate"), openEnrollment.getString("endDate"),1,con);
+                savePkg.addEnrollmentDates(eDates);
                 savePkg.save();
                 //packageId = savePkg.getPackageId();
 
@@ -144,10 +147,11 @@ public class MoveOrders extends HttpServlet {
                     for (JSONObject config : productConfigs) {
                         String productConfigUUID = config.getString("id");
                         String solidifyId = config.getString("solidifyId");
+                        JSONObject configParams = config.getJSONObject("configuration");
                         if (!"".equals(solidifyId)) {
                             Product prod = new Product(solidifyId, con);
                             // write an offer record
-                            Offer offer = new Offer(group, prod, savePkg, con);
+                            Offer offer = new Offer(group, prod, configParams.getString("displayName"), savePkg, config.toString(), con);
                             offer.save();
                             offers.put(productConfigUUID, offer); // used later when writing app coverage lines.
                         }
@@ -209,16 +213,24 @@ public class MoveOrders extends HttpServlet {
 
                 // Write the app signature
                 SincSignature ss = new SincSignature(orderId, con);
-                Signature sig = new Signature(a, ss.getSignatureJson(), con);
-                sig.save();
+                JSONObject sigJson = ss.getSignatureJson();
+                if (sigJson.has("data")) {
+                    JSONObject sigData = sigJson.getJSONObject("data");
+                    if (sigData.has("signature")) {
+                        Signature sig = new Signature(a, sigData, con);
+                        sig.save();
+                    }
+                }
 
                 AppsToEmployees ate = new AppsToEmployees(a, ee, con);
                 ate.save();
 
                 if (app.has("questionAnswers")) {
                     JSONObject answers = app.getJSONObject("questionAnswers");
-                    QuestionResponses qr = new QuestionResponses(a, answers.toString(), con);
-                    qr.save();
+                    if (!answers.keySet().isEmpty()) {
+                        QuestionResponses qr = new QuestionResponses(a, answers.toString(), con);
+                        qr.save();
+                    }
                 }
 
                 // write dependents
@@ -230,6 +242,9 @@ public class MoveOrders extends HttpServlet {
 
                     dependents.put(dep.getString("id"), d); // queue dependents for writing coverages later
                 }
+
+                // holds the beneficiaries master list for writing beneficiaries later
+                JSONArray bens = data.getJSONArray("beneficiaries");
 
                 // write coverages
                 HashSet<String> tieredProducts = new HashSet<String>();

@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.util.Date;
 
 /**
- * Created by jennifermac on 2/15/15.
+ * Created by jrobins on 2/15/15.
  */
 public class Dependent extends Person {
     private Person ee;

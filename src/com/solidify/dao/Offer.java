@@ -15,21 +15,25 @@ public class Offer {
     private int offerId;
     private Group group;
     private Product product;
+    private String displayName;
     private Pkg pkg;
+    private String json;
     private Connection con;
     private boolean manageConnection;
 
-    public Offer(int offerId, Group group, Product product, Pkg pkg, Connection con) {
+    public Offer(int offerId, Group group, Product product, String displayName, Pkg pkg, String json, Connection con) {
         this.offerId = offerId;
         this.group = group;
         this.product = product;
+        this.displayName = displayName;
         this.pkg = pkg;
+        this.json = json;
         this.con = con;
         this.manageConnection = con == null ? true : false;
     }
 
-    public Offer(Group group, Product product, Pkg pkg, Connection con) {
-        this(-1, group, product, pkg, con);
+    public Offer(Group group, Product product, String displayName, Pkg pkg, String json, Connection con) {
+        this(-1, group, product, displayName, pkg, json, con);
     }
 
     public int getOfferId() {
@@ -52,11 +56,13 @@ public class Offer {
     private void insert() throws SQLException {
         try {
             if (manageConnection) con = Utils.getConnection();
-            String sql = "INSERT INTO FE.Offers(groupId,productId,packageId) VALUES(?,?,?)";
+            String sql = "INSERT INTO FE.Offers(groupId,productId,displayName, packageId, json) VALUES(?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
             insert.setInt(2, product.getProductId());
-            insert.setInt(3, pkg.getPackageId());
+            insert.setString(3,displayName);
+            insert.setInt(4, pkg.getPackageId());
+            insert.setString(5,json);
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {

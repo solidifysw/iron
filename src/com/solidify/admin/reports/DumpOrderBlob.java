@@ -1,5 +1,6 @@
 package com.solidify.admin.reports;
 
+import com.solidify.utils.Skip;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -86,7 +87,7 @@ public class DumpOrderBlob implements Runnable {
         skip.add("data.member.personal.dependents");
         skip.add("data.member.personal.emergencyContacts");
         skip.add("data.member.personal.beneficiaries");
-        ParsedObject po = new ParsedObject(json,skip,ParsedObject.SKIP);
+        ParsedObject po = new ParsedObject(json,skip,new Skip());
         JSONObject jo = po.get();
         return jo;
     }

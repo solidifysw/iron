@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.solidify.admin.reports.Utils;
+import com.solidify.utils.Include;
 import com.solidify.utils.ParsedObject;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -46,7 +47,7 @@ public class SincSignature {
             if (rawJson != null) {
                 HashSet<String> incs = new HashSet<>();
                 incs.add("data.signature");
-                ParsedObject po = new ParsedObject(rawJson,incs,ParsedObject.INCLUDE);
+                ParsedObject po = new ParsedObject(rawJson,incs, new Include());
                 this.json = po.get();
             }
 

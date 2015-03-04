@@ -2,6 +2,7 @@ package com.solidify.dao;
 
 import com.solidify.admin.reports.Utils;
 import com.solidify.utils.ParsedObject;
+import com.solidify.utils.Skip;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -9,7 +10,7 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Created by jennifermac on 2/25/15.
+ * Created by jrobins on 2/25/15.
  */
 public class SincOrders {
 
@@ -84,7 +85,7 @@ public class SincOrders {
             orderRes.close();
 
             JSONObject slimOrder = null;
-            ParsedObject po = new ParsedObject(json,skips, ParsedObject.SKIP);
+            ParsedObject po = new ParsedObject(json, skips, new Skip());
             slimOrder = po.get();
 
             if (slimOrder != null && slimOrder.has("data")) {
@@ -92,7 +93,7 @@ public class SincOrders {
                 if (data.has("member")) {
                     JSONObject member = data.getJSONObject("member");
                     if (member.has("testUser") && member.getString("testUser").equalsIgnoreCase("no")) {
-                        // populate covs
+                        populateCovs(slimOrder);
                         groupOrders.put(slimOrder);
                     }
                 }
@@ -123,10 +124,11 @@ public class SincOrders {
                 if (!ignores.contains(key)) {
                     JSONObject cov = data.getJSONObject(key);
                     covs.put(cov);
+                    it.remove();
                 }
             }
         }
-        slimOrder.put("covs",covs);
+        slimOrder.put("covs", covs);
     }
 
     /*

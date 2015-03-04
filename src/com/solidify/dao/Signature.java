@@ -1,6 +1,7 @@
 package com.solidify.dao;
 
 import com.solidify.admin.reports.Utils;
+import com.solidify.exceptions.MissingProperty;
 import org.json.JSONObject;
 
 import java.sql.Connection;
@@ -25,9 +26,11 @@ public class Signature {
         }
     }
 
-    public void save() throws SQLException {
+    public void save() throws SQLException, MissingProperty {
         if (isValid()) {
             insert();
+        } else {
+            throw new MissingProperty("something is missing");
         }
     }
 
@@ -40,6 +43,8 @@ public class Signature {
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, app.getAppId());
             insert.setString(2, (signature.getJSONArray("signature")).toString());
+            insert.executeUpdate();
+            insert.close();
         } finally {
             if (manageConnection && con!=null) con.close();
         }

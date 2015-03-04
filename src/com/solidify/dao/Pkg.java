@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 /**
@@ -16,8 +17,6 @@ import java.util.Date;
 public class Pkg {
     private int packageId;
     private Group group;
-    private Date enrollStart;
-    private Date enrollEnd;
     private String situsState;
     private int deductionsPerYear;
     private String login1;
@@ -25,23 +24,13 @@ public class Pkg {
     private String login2;
     private String login2Label;
     private String password;
+    private ArrayList<EnrollmentDates> enrollmentDates;
     private Connection con;
     private boolean manageConnection;
 
-    public Pkg(Group group, String enrollStartStr, String enrollEndStr, String situsState, int deductionsPerYear, String login1, String login1Label, String login2, String login2Label, String password, Connection con) {
+    public Pkg(Group group, String situsState, int deductionsPerYear, String login1, String login1Label, String login2, String login2Label, String password, Connection con) {
         this.packageId = -1;
         this.group = group;
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-        Date start = null;
-        Date end = null;
-        try {
-            start = df.parse(enrollStartStr);
-        } catch (Exception e) {}
-        try {
-            end = df.parse(enrollEndStr);
-        } catch (Exception e) {}
-        this.enrollStart = start;
-        this.enrollEnd = end;
         this.situsState = situsState;
         this.deductionsPerYear = deductionsPerYear;
         this.login1 = login1;
@@ -49,6 +38,7 @@ public class Pkg {
         this.login2 = login2;
         this.login2Label = login2Label;
         this.password = password;
+        this.enrollmentDates = new ArrayList<>();
         this.con = con;
         this.manageConnection = con == null ? true : false;
     }
@@ -57,38 +47,32 @@ public class Pkg {
         return packageId;
     }
 
+    public void addEnrollmentDates(EnrollmentDates eDates) {
+        enrollmentDates.add(eDates);
+    }
+
     public void save() throws SQLException, MissingProperty {
         if (!group.isLoaded()) {
             throw new MissingProperty("Missing groupId");
         }
-        if (enrollStart == null) {
-            throw new MissingProperty("Missing enrollStart date");
-        }
-        if (enrollEnd == null) {
-            throw new MissingProperty("Missing enrollEnd date");
-        }
         insert();
     }
 
-    private void insert() throws SQLException {
+    private void insert() throws SQLException, MissingProperty {
         try {
             if (manageConnection) {
                 con = Utils.getConnection();
             }
-            String sql = "INSERT INTO FE.Packages (groupId,enrollStart,enrollEnd,situsState,deductionsPerYear,login1,login1Label,login2,login2Label,password) VALUES (?,?,?,?,?,?,?,?,?,?)";
+            String sql = "INSERT INTO FE.Packages (groupId, situsState, deductionsPerYear, login1, login1Label, login2, login2Label, password) VALUES (?,?,?,?,?,?,?,?)";
             PreparedStatement insert = con.prepareStatement(sql);
             insert.setInt(1, group.getGroupId());
-            java.sql.Date start = new java.sql.Date(enrollStart.getTime());
-            java.sql.Date end = new java.sql.Date(enrollEnd.getTime());
-            insert.setDate(2, start);
-            insert.setDate(3, end);
-            insert.setString(4, situsState);
-            insert.setInt(5,deductionsPerYear);
-            insert.setString(6,login1);
-            insert.setString(7,login1Label);
-            insert.setString(8,login2);
-            insert.setString(9,login2Label);
-            insert.setString(10,password);
+            insert.setString(2, situsState);
+            insert.setInt(3,deductionsPerYear);
+            insert.setString(4,login1);
+            insert.setString(5,login1Label);
+            insert.setString(6,login2);
+            insert.setString(7,login2Label);
+            insert.setString(8,password);
             insert.executeUpdate();
             ResultSet rs = insert.getGeneratedKeys();
             if (rs.next()) {
@@ -96,6 +80,12 @@ public class Pkg {
             }
             insert.close();
             rs.close();
+            if (!enrollmentDates.isEmpty()) {
+                for (EnrollmentDates eDates : enrollmentDates) {
+                    eDates.setPackageId(packageId);
+                    eDates.save();
+                }
+            }
         } finally {
             if (manageConnection && con != null) con.close();
         }

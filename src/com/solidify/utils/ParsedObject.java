@@ -20,9 +20,7 @@ public class ParsedObject {
     private HashSet<String> keys;
     private String currentKey;
     private Stack<Object> els;
-    private boolean skip;
-    public static final int SKIP = 1;
-    public static final int INCLUDE = 2;
+    private SkipLogic should;
 
     /**
      * Stream parses the json input string into a JSONObject accessible with the get method.  Accepts a HashSet of Strings
@@ -32,19 +30,15 @@ public class ParsedObject {
      * {"a":"abc", "c":{"d":"ghi"}}
      * @param json String of json to stream parse
      * @param keys list of dot notattion strings of elements to skip when parsing the input json
-     * @param type skip or include what is in the keys HashSet            
+     * @param should skip or include what is in the keys HashSet
      */
-    public ParsedObject(String json, HashSet<String> keys, int type) {
+    public ParsedObject(String json, HashSet<String> keys, SkipLogic should) {
         this.json = json;
         this.jo = new JSONObject();
         this.keys = keys;
+        this.should = should;
         this.currentKey = "";
         this.els = new Stack();
-        if (type == INCLUDE) {
-            this.skip = false;
-        } else {
-            this.skip = true;
-        }
         try {
             parse();
         } catch (IOException e) {
@@ -57,45 +51,7 @@ public class ParsedObject {
     }
 
     public boolean shouldSkip(String key) {
-        boolean out = false;
-        if (keys.isEmpty()) {
-            return out;
-        }
-        if (skip) {
-            if (currentKey.length() > 0) { // currentKey has something like abc.def so put .key on the end and check keys
-                if (keys.contains(currentKey + "." + key)) {
-                    out = true;
-                }
-            } else if (keys.contains(key)) {
-                out = true;
-            }
-        } else {
-            out = true;
-            if (currentKey.length() > 0) {
-                if (keys.contains(currentKey)) {
-                    out = false;
-                } else {
-                    for (String val : keys) {
-                        if (val.startsWith(currentKey+"."+key)) {
-                            out = false;
-                            break;
-                        }
-                    }
-                }
-            } else {
-                if (keys.contains(key)) {
-                    out = false;
-                } else {
-                    for (String val : keys) {
-                        if (val.startsWith(key)) {
-                            out = false;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return out;
+       return should.skip(key,currentKey,keys);
     }
 
     private boolean stackIsString() {
