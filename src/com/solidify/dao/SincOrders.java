@@ -115,6 +115,11 @@ public class SincOrders {
         ignores.add("dependents");
         ignores.add("emergencyContacts");
         JSONArray covs = new JSONArray();
+        JSONObject declineReasons = new JSONObject();
+
+        if (slimOrder.has("declineReasons")) {
+            declineReasons = slimOrder.getJSONObject("declineReasons");
+        }
 
         if (slimOrder.has("data")) {
             JSONObject data = slimOrder.getJSONObject("data");
@@ -123,6 +128,10 @@ public class SincOrders {
                 String key = (String)it.next();
                 if (!ignores.contains(key)) {
                     JSONObject cov = data.getJSONObject(key);
+                    // if declined, look for a decline reason and set it in the cov object
+                    if (cov.getString("benefit").equalsIgnoreCase("decline") && declineReasons.has(key)) {
+                        cov.put("declineReason", declineReasons.getString(key));
+                    }
                     covs.put(cov);
                     it.remove();
                 }

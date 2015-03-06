@@ -278,6 +278,7 @@ public class MoveOrders extends HttpServlet {
                         log.error("Couldn't find an electionTypeId for election: "+election);
                         break;
                     }
+                    //System.out.println(election+" "+electionTypeId);
                     DecimalFormat df = new DecimalFormat("#,###,###.00");
                     float annualPremium = 0f, modalPremium = 0f;
                     String effectiveDate = null;

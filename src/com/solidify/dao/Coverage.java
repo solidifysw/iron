@@ -62,7 +62,7 @@ public class Coverage {
         }
         if (electionTypeId == 2 && json.has("declineReason")) {
             this.declineReason = json.getString("declineReason");
-        } else if (electionTypeId == 2) {
+        } else if (electionTypeId == 2) { // this sets the electionType to opt-out if there is no decline reason
             this.electionTypeId = 3;
         }
     }
