@@ -22,7 +22,7 @@ if (reportToRun != null && reportToRun.equals("declinations")) {
 	new Thread(new ResetBatch(groupId)).start();
 } else if (reportToRun != null && reportToRun.equals("dumpBlob")) {
 	String orderId = request.getParameter("orderId");
-	new Thread(new DumpOrderBlob(orderId,true)).start();
+	//new Thread(new DumpOrderBlob(orderId,true)).start();
 } else if (reportToRun != null && reportToRun.equals("dumpGroupOrders")) {
 	String groupId = request.getParameter("groupId");
 	new Thread(new DumpGroupOrders(groupId)).start();

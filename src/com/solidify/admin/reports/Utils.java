@@ -39,10 +39,14 @@ public class Utils {
 	public static TreeMap<String,String> getActiveGroups(Connection con) {
 		return getGroupList(ACTIVE,con);
 	}
-	
-	public static TreeMap<String,String> getGroupList(Connection con) {
-		return getGroupList(ALL,con);
-	}
+
+    public static TreeMap<String,String> getGroupList(Connection con) {
+        return getGroupList(ALL,con);
+    }
+
+	public static TreeMap<String,String> getGroupList() {
+        return getGroupList(ALL,getConnection());
+    }
 
 	public static int getMemberCount(String groupId) throws SQLException {
 		Connection con = getConnection();
