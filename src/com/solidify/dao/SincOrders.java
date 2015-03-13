@@ -144,11 +144,11 @@ public class SincOrders {
 
                         for (int i=0; i<covBens.length(); i++) {
                             JSONObject ben = covBens.getJSONObject(i);
-                            System.out.println(i+": "+ben.toString());
+                            //System.out.println(i+": "+ben.toString());
                             String beneficiaryId = ben.getString("beneficiaryId");
                             for (int j=0; j<bens.length(); j++) {
                                 JSONObject b = bens.getJSONObject(j);
-                                System.out.println(b.toString());
+                                //System.out.println(b.toString());
                                 if (beneficiaryId.equals(b.getString("id"))) {
                                     ben.put("firstName",b.getString("firstName"));
                                     ben.put("lastName",b.getString("lastName"));
