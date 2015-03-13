@@ -18,16 +18,23 @@ public class SincOrders {
     private Connection con;
     private boolean manageConnection;
     private String groupId;
+    private boolean printToConsole;
+    public static final boolean PRINT = true;
+    public static final boolean DO_NOT_PRINT = false;
 
-    public SincOrders(String groupId, Connection con) throws Exception {
+    public SincOrders(String groupId, boolean printToConsole, Connection con) throws Exception {
         this.groupId = groupId;
+        this.printToConsole = printToConsole;
         this.con = con;
         this.manageConnection = con == null ? true : false;
         load();
     }
+    public SincOrders(String groupId, Connection con) throws Exception {
+        this(groupId,DO_NOT_PRINT,con);
+    }
 
     public SincOrders(String groupId) throws Exception {
-        this(groupId, null);
+        this(groupId, DO_NOT_PRINT, null);
     }
 
     private void load() throws Exception {
@@ -37,21 +44,6 @@ public class SincOrders {
         ResultSet oIds = null;
         Statement stmt1 = null;
         ResultSet orderRes = null;
-        HashSet<String> skips = new HashSet<>();
-        skips.add("member"); skips.add("enrollment");
-        skips.add("keepCoverage");
-        skips.add("prePostTaxSelections");
-        skips.add("imported");
-        skips.add("current");
-        skips.add("data.signature");
-        skips.add("data.member.tags");
-        skips.add("data.member.rehireEligible");
-        skips.add("data.member.terminationNotes");
-        skips.add("data.member.payrollId");
-        skips.add("data.member.carrierData");
-        skips.add("data.member.personal.dependents");
-        skips.add("data.member.personal.emergencyContacts");
-        skips.add("data.member.personal.beneficiaries");
 
         HashSet<String> orderIds = new HashSet<String>();
         JSONArray groupOrders = new JSONArray();
@@ -72,34 +64,11 @@ public class SincOrders {
         // query each order and parse the data blob for pertinent info
         String json = null;
         int cnt = 0;
-        sql = "SELECT data FROM sinc.orders WHERE id = ?";
-        select = con.prepareStatement(sql);
         for (Iterator<String> it = orderIds.iterator(); it.hasNext();) {
             String orderId = it.next();
-            select.setString(1,orderId);
-            orderRes = select.executeQuery();
-            if (orderRes.next()) {
-                cnt++;
-                json = orderRes.getString("data");
-            }
-            orderRes.close();
-
-            JSONObject slimOrder = null;
-            ParsedObject po = new ParsedObject(json, skips, new Skip());
-            slimOrder = po.get();
-
-            if (slimOrder != null && slimOrder.has("data")) {
-                JSONObject data = slimOrder.getJSONObject("data");
-                if (data.has("member")) {
-                    JSONObject member = data.getJSONObject("member");
-                    if (member.has("testUser") && member.getString("testUser").equalsIgnoreCase("no")) {
-                        populateCovs(slimOrder);
-                        groupOrders.put(slimOrder);
-                    }
-                }
-            }
+            SincOrder so = new SincOrder(orderId, printToConsole, con);
+            groupOrders.put(so.getOrder());
         }
-        select.close();
 
         // groupOrders contains the slim versions of the orders for this group
         // Find the latest order for each individual
@@ -108,141 +77,6 @@ public class SincOrders {
         }
     }
 
-    public void populateCovs(JSONObject slimOrder) {
-        HashSet<String> ignores = new HashSet<>();
-        ignores.add("member");
-        ignores.add("beneficiaries");
-        ignores.add("dependents");
-        ignores.add("emergencyContacts");
-        ignores.add("version");
-        JSONArray covs = new JSONArray();
-        JSONObject declineReasons = new JSONObject();
-
-        if (slimOrder.has("declineReasons")) {
-            declineReasons = slimOrder.getJSONObject("declineReasons");
-        }
-
-        if (slimOrder.has("data")) {
-            JSONObject data = slimOrder.getJSONObject("data");
-            JSONArray bens = new JSONArray();
-            if (data.has("beneficiaries")) {
-                bens = data.getJSONArray("beneficiaries");
-            }
-
-            for (Iterator<Object> it = data.keys(); it.hasNext();) {
-                String key = (String)it.next();
-                if (!ignores.contains(key)) {
-                    JSONObject cov = data.getJSONObject(key);
-                    // if declined, look for a decline reason and set it in the cov object
-                    if (cov.getString("benefit").equalsIgnoreCase("decline") && declineReasons.has(key)) {
-                        cov.put("declineReason", declineReasons.getString(key));
-                    }
-                    JSONArray newBens = null;
-                    if (cov.has("beneficiaries")) {
-                        newBens = new JSONArray();
-                        JSONArray covBens = cov.getJSONArray("beneficiaries");
-
-                        for (int i=0; i<covBens.length(); i++) {
-                            JSONObject ben = covBens.getJSONObject(i);
-                            //System.out.println(i+": "+ben.toString());
-                            String beneficiaryId = ben.getString("beneficiaryId");
-                            for (int j=0; j<bens.length(); j++) {
-                                JSONObject b = bens.getJSONObject(j);
-                                //System.out.println(b.toString());
-                                if (beneficiaryId.equals(b.getString("id"))) {
-                                    ben.put("firstName",b.getString("firstName"));
-                                    ben.put("lastName",b.getString("lastName"));
-                                    ben.put("relationship",b.getString("relationship"));
-                                    ben.put("address1",b.getString("address1"));
-                                    ben.put("address2",b.getString("address2"));
-                                    ben.put("city",b.getString("city"));
-                                    ben.put("state",b.getString("state"));
-                                    ben.put("zip",b.getString("zip"));
-                                    newBens.put(ben);
-                                    break;
-                                }
-                            }
-                        }
-                        cov.remove("beneficiaries");
-                        cov.put("beneficiaries",newBens);
-                    }
-                    covs.put(cov);
-                    it.remove();
-                }
-            }
-        }
-        slimOrder.put("covs", covs);
-    }
-
-    /*
-     * Finds the class for this memberId.  enrollment.classes may be the old style that has the list of memberId's in
-     * the members object inside the classes array. old style classes:[{...},{...}]
-     * new style classes is an array of classIds.  new style classes:['a','b'...] Have to query the classes table to
-     * find the members.
-     * @param classes
-     * @param memberId
-     * @param con
-     * @return
-     * @throws SQLException
-
-    public String processClasses(JSONArray classes, String memberId, Connection con) throws SQLException {
-        String out = null;
-        boolean found = false;
-        for (int i = 0; i < classes.length(); i++) {
-            if (found)  break;
-            Object tmp = classes.get(i);
-            if (tmp.getClass().equals(String.class)) {
-                out = getClassVal(classes,memberId,con);
-            } else if (tmp.getClass().equals(JSONObject.class)) {
-                JSONObject jo = classes.getJSONObject(i);
-                JSONArray mems = jo.getJSONArray("members");
-                for (int j=0; j<mems.length(); j++) {
-                    if (mems.getString(i).equals(memberId)) {
-                        out = jo.getString("id");
-                        found = true;
-                        break;
-                    }
-                }
-            }
-        }
-        return out;
-    }
-
-    public String getClassVal(JSONArray classes, String memberId, Connection con) throws SQLException {
-        String classVal = null;
-        boolean found = false;
-        String sql = "SELECT data FROM sinc.classes WHERE deleted = 0 AND id = ?";
-        PreparedStatement select = con.prepareStatement(sql);
-        ResultSet rs = null;
-
-        for (int i=0; i<classes.length(); i++) {
-            if (found) {
-                break;
-            }
-            JSONObject cls = null;
-            String classId = classes.getString(i);
-            select.setString(1,classId);
-            rs = select.executeQuery();
-            if (rs.next()) {
-                cls = new JSONObject(rs.getString("data"));
-            }
-            rs.close();
-            if (cls == null) {
-                continue;
-            }
-            JSONArray members = cls.getJSONArray("members");
-            for (int j=0; j<members.length(); j++) {
-                if (members.getString(j).equals(memberId)) {
-                    classVal = cls.getString("name");
-                    found = true;
-                    break;
-                }
-            }
-        }
-        select.close();
-        return classVal;
-    }
-     */
     public static ArrayList<JSONObject> findLatestOrders(JSONArray groupOrders) {
         ArrayList<JSONObject> out = new ArrayList<JSONObject>();
         if (groupOrders.length() > 0) {
