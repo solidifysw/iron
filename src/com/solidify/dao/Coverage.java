@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 /**
  * Created by jrobins on 2/10/15.
@@ -26,6 +27,7 @@ public class Coverage {
     private String start;
     private String end;
     private Connection con;
+    private ArrayList<Beneficiary> beneficiaries;
     private boolean manageConnection = true;
     public static final int PENDED = 1;
     public static final int NOT_PENDED = 0;
@@ -45,11 +47,12 @@ public class Coverage {
         this.start = start;
         this.end = end;
         this.con = con;
+        this.beneficiaries = new ArrayList<>();
         this.manageConnection = con == null ? true : false;
     }
 
     /**
-     * Use this method when moving from sinc database.  Converts benefit in the cancer order object to LEVEL_ONE or LEVEL_TWO from TBD
+     * Use this constructor when moving from sinc database.  Converts benefit in the cancer order object to LEVEL_ONE or LEVEL_TWO from TBD
      * @param offer
      * @param app
      * @param json
@@ -65,6 +68,10 @@ public class Coverage {
         } else if (electionTypeId == 2) { // this sets the electionType to opt-out if there is no decline reason
             this.electionTypeId = 3;
         }
+    }
+
+    public void addBeneficiary(Beneficiary ben) {
+        beneficiaries.add(ben);
     }
 
     public void setDeclineReason(String reason) {

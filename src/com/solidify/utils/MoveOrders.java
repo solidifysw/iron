@@ -255,9 +255,11 @@ public class MoveOrders extends HttpServlet {
 
                 JSONArray covs = app.getJSONArray("covs");
                 for (int i = 0; i < covs.length(); i++) {
+                    JSONArray covBens = null;
                     JSONObject cov = covs.getJSONObject(i);
                     String splitId = cov.getString("splitId");
                     Offer o = null;
+
                     if (offers.containsKey(splitId)) {
                         o = offers.get(splitId);
                     }
@@ -265,6 +267,7 @@ public class MoveOrders extends HttpServlet {
                     if (o == null) {
                         throw new Exception("Can't write coverage record no offer found");
                     }
+
                     String election = null;
                     int electionTypeId = -1;
                     if (!cov.has("benefit")) {
@@ -305,7 +308,15 @@ public class MoveOrders extends HttpServlet {
 
                     Coverage c = new Coverage(o, a, cov, electionTypeId, Coverage.NOT_PENDED, annualPremium, modalPremium,effectiveDate,null,con);
                     c.save();
-
+                    int coverageId = c.getCoverageId();
+                    if (cov.has("beneficiaries")) {
+                        covBens = cov.getJSONArray("beneficiaries");
+                        for (int j=0; j<covBens.length(); j++) {
+                            //System.out.println(app.getString("id")+": "+covBens.getJSONObject(j).toString());
+                            Beneficiary ben = new Beneficiary(coverageId,covBens.getJSONObject(j),con);
+                            ben.save();
+                        }
+                    }
                     // Write the covered people records if elected
                     // VTL
                     if (lifeProducts.contains(cov.getString("type")) && cov.getString("subType").equals("ee")) {
