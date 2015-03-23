@@ -17,10 +17,14 @@ public class BaseTest {
     @Before
     public void setUp() {
         connectionProps = new Properties();
-        connectionProps.put("user","root");
-        connectionProps.put("password", "letmein1");
+        //connectionProps.put("user","root");
+        //connectionProps.put("password", "letmein1");
+        connectionProps.put("user","sinc");
+        connectionProps.put("password","K6fqxTT3X6Ri5w4N3bC7hMb75nn90WaZ");
         try {
-            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/FE", connectionProps);
+            //con = DriverManager.getConnection("jdbc:mysql://localhost:3306/FE", connectionProps);
+            con = DriverManager.getConnection("jdbc:mysql://assurantworks-mysql-upgrade.solidifyhr.com/sinc", connectionProps);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
