@@ -155,4 +155,27 @@ public class SincOrder {
     public JSONObject getOrder() {
         return order;
     }
+
+    /**
+     * Created this method to allow an existing order to be forced back into a batch.
+     * Unit test, TestSincOrder uses this method to execute the udpate.  You have to
+     * make sure that the order is not in the batchOrders table or is marked deleted in
+     * that table, then update the isBatchable flag in the orders table.
+     * @param orderId
+     * @param con
+     * @throws SQLException
+     */
+    public static void updateBatchFlag(String orderId, Connection con) throws SQLException {
+        String sql = "UPDATE sinc.batchOrders SET deleted = 1 WHERE orderId = ?";
+        PreparedStatement update = con.prepareStatement(sql);
+        update.setString(1,orderId);
+        update.executeUpdate();
+        update.close();
+
+        sql = "UPDATE sinc.orders SET isBatchable = 1 WHERE id = ?";
+        update = con.prepareStatement(sql);
+        update.setString(1,orderId);
+        update.executeUpdate();
+        update.close();
+    }
 }
