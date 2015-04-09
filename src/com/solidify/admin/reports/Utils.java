@@ -205,14 +205,15 @@ public class Utils {
 			} catch (Exception e) {}
 		}
 	}
-	
+	public static void dumpOrderBlob(String orderId) {
+		dumpOrderBlob(orderId, true);
+	}
 	/**
 	 * Print's the data stored in the order data blob in the database to the log.  
 	 * @param orderId the id of the order to dump
 	 */
-	public static void dumpOrderBlob(String orderId) {
+	public static void dumpOrderBlob(String orderId, boolean includeSourceBlob) {
         Connection con = null;
-		boolean includeSourceBlob = false;
         try {
             con = getConnection();
             dumpOrderBlob(orderId, includeSourceBlob, con);
@@ -522,7 +523,7 @@ public class Utils {
 			select.close();
 
 			// Get the list of orderId's for this group
-			sql = "SELECT id FROM sinc.orders WHERE completed = 1 AND deleted = 0 AND type != 'IMPORTED' AND groupId = ?";
+			sql = "SELECT id FROM sinc.orders WHERE deleted = 0 AND type != 'IMPORTED' AND groupId = ?";
 			idSelect = con.prepareStatement(sql);
 			idSelect.setString(1, groupId);
 			oIds = idSelect.executeQuery();
